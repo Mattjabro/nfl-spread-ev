@@ -14,7 +14,7 @@ TEMPERATURE = 2.35
 ODDS_PRICE = -110
 MIN_SIGMA = 1e-6
 
-RESULTS_DIR = Path("../results")
+RESULTS_DIR = Path("results")
 
 # ============================================================
 # HELPERS
