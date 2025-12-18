@@ -56,7 +56,13 @@ def load_week_data():
 # ============================================================
 @st.cache_data(show_spinner=True)
 def load_last_game_qbs(season, week):
-    pbp = nfl.import_pbp_data(years=[season], downcast=True)
+    try:
+        pbp = nfl.import_pbp_data(years=[season], downcast=True)
+    except Exception:
+        # nfl_data_py crashes on Python 3.13
+        # Return empty defaults so app still runs
+        return {}
+
     pbp = pbp[pbp["week"] < week]
 
     passes = pbp[
@@ -71,14 +77,12 @@ def load_last_game_qbs(season, week):
         .sort_values(["posteam", "week", "attempts"])
     )
 
-    last_qb = (
+    return (
         qb_counts.groupby("posteam")
         .tail(1)
         .set_index("posteam")["passer_player_name"]
         .to_dict()
     )
-
-    return last_qb
 
 # ============================================================
 # TEAM BASELINES FROM MODEL OUTPUTS
