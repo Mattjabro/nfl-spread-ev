@@ -55,16 +55,8 @@ def load_week_data():
 # DEFAULT QB = STARTER LAST WEEK (FROM PIPELINE CSV)
 # ============================================================
 @st.cache_data(show_spinner=True)
-def load_last_game_qbs(season, week):
-    # produced by estimate_qb_values_from_spreads.py
-    p = RESULTS_DIR / "last_week_starting_qbs.csv"
-    if not p.exists():
-        return {}
-
-    df = pd.read_csv(p)
-
-    # Expected columns: team, qb
-    # Return: { "SEA": "G.Smith", ... }
+def load_last_week_qbs():
+    df = pd.read_csv(RESULTS_DIR / "last_week_starting_qbs.csv")
     return dict(zip(df["team"], df["qb"]))
 
 # ============================================================
@@ -90,7 +82,7 @@ st.set_page_config(page_title="NFL Spread EV Tool", layout="wide")
 st.title("NFL Spread EV Tool — Week 16")
 
 games, QB_MAP, QB_LIST, ROOKIE_BASELINE = load_week_data()
-last_qb = load_last_game_qbs(SEASON, WEEK)
+last_qb = load_last_week_qbs()
 TEAM_BASELINE = compute_team_baselines(games)
 
 with st.sidebar:
