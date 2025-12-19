@@ -76,13 +76,18 @@ def compute_team_power_with_recency(recency_lambda: float):
     max_week = df["global_week"].max()
 
     age = max_week - df["global_week"]
-    weights = np.exp(-recency_lambda * age)
 
-    df = df.assign(weighted_strength=df["team_strength"] * weights)
+    # IMPORTANT FIX: make weights an indexed Series
+    weights = pd.Series(
+        np.exp(-recency_lambda * age.values),
+        index=df.index
+    )
+
+    df["weighted_strength"] = df["team_strength"] * weights
 
     team_power = (
         df.groupby("team")
-          .apply(lambda x: x["weighted_strength"].sum() / weights[x.index].sum())
+          .apply(lambda x: x["weighted_strength"].sum() / weights.loc[x.index].sum())
           .to_dict()
     )
 
