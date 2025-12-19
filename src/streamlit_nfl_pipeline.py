@@ -69,10 +69,11 @@ def load_team_power():
     """
     df = pd.read_csv(RESULTS_DIR / "team_power_raw.csv")
 
-    df["team_power"] = pd.to_numeric(df["team_power"], errors="coerce")
-    df = df.dropna(subset=["team", "team_power"])
+    # Use team_strength as final team power
+    df["team_strength"] = pd.to_numeric(df["team_strength"], errors="coerce")
+    df = df.dropna(subset=["team", "team_strength"])
 
-    return dict(zip(df["team"], df["team_power"]))
+    return dict(zip(df["team"], df["team_strength"]))
 
 # ============================================================
 # UI
