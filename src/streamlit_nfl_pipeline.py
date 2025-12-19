@@ -167,7 +167,10 @@ with tab1:
         r2c1, r2c2, r2c3 = st.columns([3, 2, 2])
 
         r2c1.markdown(
-            f"**Predicted Spread:**  {format_matchup_spread(away, home, mu_home)}"
+            f"""
+            **Predicted Spread:**  {format_matchup_spread(away, home, mu_home)}  
+            **Best Bet:** {bet}
+            """
         )
 
         r2c2.metric("Cover Prob", f"{prob:.3f}")
