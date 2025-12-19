@@ -57,7 +57,7 @@ def load_week_data():
 @st.cache_data(show_spinner=True, ttl=0)
 def load_last_game_qbs(season, week):
     try:
-        pbp = nfl.import_pbp_data(years=[season], downcast=True)
+        pbp = nfl.import_pbp_data(years=[season - 1], downcast=True)
     except Exception:
         # nfl_data_py crashes on Python 3.13
         # Return empty defaults so app still runs
