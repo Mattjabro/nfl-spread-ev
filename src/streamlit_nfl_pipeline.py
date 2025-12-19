@@ -178,6 +178,11 @@ with tab1:
 with tab2:
     st.subheader("Quarterback Power Rankings")
 
+    show_only_active = st.checkbox(
+        "Show only QBs who have played this season",
+        value=True
+    )
+
     qb_rankings = (
         pd.DataFrame({
             "QB": list(QB_MAP.keys()),
@@ -187,6 +192,11 @@ with tab2:
         .reset_index(drop=True)
     )
 
+    if show_only_active:
+        active_qbs = set(last_qb.values())
+        qb_rankings = qb_rankings[qb_rankings["QB"].isin(active_qbs)]
+
+    qb_rankings = qb_rankings.reset_index(drop=True)
     qb_rankings.insert(0, "Rank", qb_rankings.index + 1)
 
     st.dataframe(
@@ -196,5 +206,6 @@ with tab2:
     )
 
     st.caption(
-        "QB values reflect estimated point impact on the betting spread, learned from historical closing lines and shrunk toward league average to reduce noise."
+        "QB values estimate point impact on the betting spread, inferred from historical closing lines "
+        "and shrunk toward league average to reduce noise."
     )
