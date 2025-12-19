@@ -91,6 +91,10 @@ tab1, tab2, tab3 = st.tabs(
     ["Week Slate EV", "Matchup Sandbox", "Power Rankings"]
 )
 
+# Default team power (used by Tab 1 & 2)
+DEFAULT_RECENCY = 0.05
+TEAM_BASELINE = compute_team_power_with_recency(DEFAULT_RECENCY)
+
 # ============================================================
 # TAB 1: WEEK SLATE EV TOOL
 # ============================================================
