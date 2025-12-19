@@ -60,39 +60,19 @@ def load_last_week_qbs():
     return dict(zip(df["team"], df["qb"]))
 
 # ============================================================
-# RECENCY-AWARE TEAM POWER (NEW)
+# TEAM POWER (NEW SIMPLE VERSION)
 # ============================================================
 @st.cache_data(show_spinner=True)
-def compute_team_power_with_recency(recency_lambda: float):
+def load_team_power():
     """
-    Recency-weighted team power using time-indexed latent strengths.
-    Returns PURE PYTHON FLOATS.
+    Loads final team power directly from build_team_power_from_model.py output.
     """
     df = pd.read_csv(RESULTS_DIR / "team_power_raw.csv")
 
-    df["team_strength"] = pd.to_numeric(df["team_strength"], errors="coerce")
-    df["global_week"] = pd.to_numeric(df["global_week"], errors="coerce")
-    df = df.dropna(subset=["team_strength", "global_week"])
+    df["team_power"] = pd.to_numeric(df["team_power"], errors="coerce")
+    df = df.dropna(subset=["team", "team_power"])
 
-    max_week = df["global_week"].max()
-    age = max_week - df["global_week"]
-
-    weights = np.exp(-recency_lambda * age.values)
-
-    df["weighted_strength"] = df["team_strength"].values * weights
-
-    team_power = (
-        df.groupby("team", as_index=False)
-          .apply(
-              lambda x: np.sum(x["weighted_strength"].values)
-                        / np.sum(weights[x.index])
-          )
-    )
-
-    # CRITICAL LINE: force scalar floats
-    team_power = team_power.astype(float)
-
-    return dict(zip(team_power.index, team_power.values))
+    return dict(zip(df["team"], df["team_power"]))
 
 # ============================================================
 # UI
@@ -107,16 +87,16 @@ with st.sidebar:
     st.header("Model Settings")
 
     temperature = st.number_input("Temperature", value=float(TEMPERATURE), step=0.05)
-
     odds_price = st.number_input("Odds price", value=int(ODDS_PRICE), step=1)
 
 tab1, tab2, tab3 = st.tabs(
     ["Week Slate EV", "Matchup Sandbox", "Power Rankings"]
 )
 
-# Default team power (used by Tab 1 & 2)
-DEFAULT_RECENCY = 0.05
-TEAM_BASELINE = compute_team_power_with_recency(DEFAULT_RECENCY)
+# ============================================================
+# LOAD TEAM BASELINE ONCE
+# ============================================================
+TEAM_BASELINE = load_team_power()
 
 # ============================================================
 # TAB 1: WEEK SLATE EV TOOL
@@ -213,7 +193,7 @@ with tab1:
     )
 
 # ============================================================
-# TAB 2: MATCHUP SANDBOX
+# TAB 2: MATCHUP SANDBOX (FIXED)
 # ============================================================
 with tab2:
     teams = sorted(TEAM_BASELINE.keys())
@@ -224,17 +204,14 @@ with tab2:
     away_qb = st.selectbox("Away QB", QB_LIST)
     home_qb = st.selectbox("Home QB", QB_LIST)
 
-    base_mu_home = (
-        float(TEAM_BASELINE.get(home, 0.0))
-        - float(TEAM_BASELINE.get(away, 0.0))
-    )
+    base_mu_home = TEAM_BASELINE[home] - TEAM_BASELINE[away]
     qb_delta = QB_MAP.get(home_qb, ROOKIE_BASELINE) - QB_MAP.get(away_qb, ROOKIE_BASELINE)
     mu_home = base_mu_home + qb_delta
 
     st.metric("Predicted Spread", format_matchup_spread(away, home, mu_home))
 
 # ============================================================
-# TAB 3: POWER RANKINGS
+# TAB 3: POWER RANKINGS (FIXED)
 # ============================================================
 with tab3:
     st.subheader("Quarterback Power Rankings")
@@ -255,19 +232,9 @@ with tab3:
         use_container_width=True,
         hide_index=True
     )
-    st.subheader("Power Rankings")
 
-    recency_lambda = st.slider(
-        "Team Power Recency Weight",
-        min_value=0.0,
-        max_value=0.15,
-        value=0.05,
-        step=0.01,
-        help="Controls how much recent seasons matter vs long-run strength"
-    )
+    st.subheader("Team Power Rankings")
 
-    TEAM_BASELINE = compute_team_power_with_recency(recency_lambda)
-    
     team_rankings = (
         pd.DataFrame({
             "Team": list(TEAM_BASELINE.keys()),
@@ -286,7 +253,7 @@ with tab3:
     )
 
     st.caption(
-        "Team power is derived from Bayesian latent strength (last ~4 seasons) "
-        "with user-controlled recency weighting. Sandbox uses team power + QB deltas. "
+        "Team power is season-based latent strength plus average QB value. "
+        "Sandbox uses team power + QB deltas. "
         "Week Slate EV uses full matchup-specific modeling."
     )
