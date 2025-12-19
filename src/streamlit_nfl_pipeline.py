@@ -69,6 +69,11 @@ def compute_team_power_with_recency(recency_lambda: float):
     """
     df = pd.read_csv(RESULTS_DIR / "team_power_raw.csv")
 
+    df["team_strength"] = pd.to_numeric(df["team_strength"], errors="coerce")
+    df["global_week"] = pd.to_numeric(df["global_week"], errors="coerce")
+
+    df = df.dropna(subset=["team_strength", "global_week"])
+
     required = {"team", "global_week", "team_strength"}
     if not required.issubset(df.columns):
         raise ValueError(f"team_power_raw.csv must contain {required}")
