@@ -275,16 +275,19 @@ with tab3:
 
     qb_rankings = (
         pd.DataFrame({
-            "QB": QB_MAP.keys(),
-            "QB Value (pts)": QB_MAP.values()
+            "QB": list(QB_MAP.keys()),
+            "QB Value (pts)": list(QB_MAP.values())
         })
         .sort_values("QB Value (pts)", ascending=False)
         .reset_index(drop=True)
     )
 
+    qb_rankings.insert(0, "Rank", qb_rankings.index + 1)
+
     st.dataframe(
         qb_rankings.style.format({"QB Value (pts)": "{:+.2f}"}),
-        use_container_width=True
+        use_container_width=True,
+        hide_index=True
     )
 
     st.markdown("---")
@@ -293,19 +296,24 @@ with tab3:
 
     team_rankings = (
         pd.DataFrame({
-            "Team": TEAM_BASELINE.keys(),
-            "Team Power (pts)": TEAM_BASELINE.values()
+            "Team": list(TEAM_BASELINE.keys()),
+            "Team Power (pts)": list(TEAM_BASELINE.values())
         })
         .sort_values("Team Power (pts)", ascending=False)
         .reset_index(drop=True)
     )
 
+    team_rankings.insert(0, "Rank", team_rankings.index + 1)
+
     st.dataframe(
         team_rankings.style.format({"Team Power (pts)": "{:+.2f}"}),
-        use_container_width=True
+        use_container_width=True,
+        hide_index=True
     )
 
     st.caption(
-        "QB power reflects league-anchored QB impact estimated from closing spreads. "
-        "Team power reflects average model-implied strength across all games, independent of QB."
+        "QB power is league-anchored and estimated from closing spreads through the prior week. "
+        "Team power reflects average model-implied strength from the current week slate only. "
+        "This ranking is descriptive, not a season-long power rating."
+    )
     )
