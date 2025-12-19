@@ -228,7 +228,10 @@ with tab2:
     away_qb = st.selectbox("Away QB", QB_LIST)
     home_qb = st.selectbox("Home QB", QB_LIST)
 
-    base_mu_home = TEAM_BASELINE.get(home, 0.0) - TEAM_BASELINE.get(away, 0.0)
+    base_mu_home = (
+        float(TEAM_BASELINE.get(home, 0.0))
+        - float(TEAM_BASELINE.get(away, 0.0))
+    )
     qb_delta = QB_MAP.get(home_qb, ROOKIE_BASELINE) - QB_MAP.get(away_qb, ROOKIE_BASELINE)
     mu_home = base_mu_home + qb_delta
 
