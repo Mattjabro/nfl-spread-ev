@@ -87,17 +87,6 @@ with st.sidebar:
 
     odds_price = st.number_input("Odds price", value=int(ODDS_PRICE), step=1)
 
-    recency_lambda = st.slider(
-        "Team Power Recency Weight",
-        min_value=0.0,
-        max_value=0.15,
-        value=0.05,
-        step=0.01,
-        help="0 = long-run strength, higher = recent form emphasis"
-    )
-
-TEAM_BASELINE = compute_team_power_with_recency(recency_lambda)
-
 tab1, tab2, tab3 = st.tabs(
     ["Week Slate EV", "Matchup Sandbox", "Power Rankings"]
 )
@@ -218,6 +207,19 @@ with tab2:
 # TAB 3: POWER RANKINGS
 # ============================================================
 with tab3:
+    st.subheader("Power Rankings")
+
+    recency_lambda = st.slider(
+        "Team Power Recency Weight",
+        min_value=0.0,
+        max_value=0.15,
+        value=0.05,
+        step=0.01,
+        help="Controls how much recent seasons matter vs long-run strength"
+    )
+
+    TEAM_BASELINE = compute_team_power_with_recency(recency_lambda)
+    
     team_rankings = (
         pd.DataFrame({
             "Team": list(TEAM_BASELINE.keys()),
