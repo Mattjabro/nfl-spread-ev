@@ -60,22 +60,6 @@ def load_last_week_qbs():
     return dict(zip(df["team"], df["qb"]))
 
 # ============================================================
-# TEAM POWER (NEW SIMPLE VERSION)
-# ============================================================
-@st.cache_data(show_spinner=True)
-def load_team_power():
-    """
-    Loads final team power directly from build_team_power_from_model.py output.
-    """
-    df = pd.read_csv(RESULTS_DIR / "team_power_raw.csv")
-
-    # Use team_strength as final team power
-    df["team_strength"] = pd.to_numeric(df["team_strength"], errors="coerce")
-    df = df.dropna(subset=["team", "team_strength"])
-
-    return dict(zip(df["team"], df["team_strength"]))
-
-# ============================================================
 # UI
 # ============================================================
 st.set_page_config(page_title="NFL Spread EV Tool", layout="wide")
@@ -90,14 +74,9 @@ with st.sidebar:
     temperature = st.number_input("Temperature", value=float(TEMPERATURE), step=0.05)
     odds_price = st.number_input("Odds price", value=int(ODDS_PRICE), step=1)
 
-tab1, tab2, tab3 = st.tabs(
-    ["Week Slate EV", "Matchup Sandbox", "Power Rankings"]
+tab1, tab2 = st.tabs(
+    ["Week Slate EV", "QB Power Rankings"]
 )
-
-# ============================================================
-# LOAD TEAM BASELINE ONCE
-# ============================================================
-TEAM_BASELINE = load_team_power()
 
 # ============================================================
 # TAB 1: WEEK SLATE EV TOOL
@@ -194,27 +173,9 @@ with tab1:
     )
 
 # ============================================================
-# TAB 2: MATCHUP SANDBOX (FIXED)
+# TAB 2: QB POWER RANKINGS
 # ============================================================
 with tab2:
-    teams = sorted(TEAM_BASELINE.keys())
-
-    away = st.selectbox("Away team", teams)
-    home = st.selectbox("Home team", teams, index=1)
-
-    away_qb = st.selectbox("Away QB", QB_LIST)
-    home_qb = st.selectbox("Home QB", QB_LIST)
-
-    base_mu_home = TEAM_BASELINE[home] - TEAM_BASELINE[away]
-    qb_delta = QB_MAP.get(home_qb, ROOKIE_BASELINE) - QB_MAP.get(away_qb, ROOKIE_BASELINE)
-    mu_home = base_mu_home + qb_delta
-
-    st.metric("Predicted Spread", format_matchup_spread(away, home, mu_home))
-
-# ============================================================
-# TAB 3: POWER RANKINGS (FIXED)
-# ============================================================
-with tab3:
     st.subheader("Quarterback Power Rankings")
 
     qb_rankings = (
@@ -234,27 +195,7 @@ with tab3:
         hide_index=True
     )
 
-    st.subheader("Team Power Rankings")
-
-    team_rankings = (
-        pd.DataFrame({
-            "Team": list(TEAM_BASELINE.keys()),
-            "Power": list(TEAM_BASELINE.values())
-        })
-        .sort_values("Power", ascending=False)
-        .reset_index(drop=True)
-    )
-
-    team_rankings.insert(0, "Rank", team_rankings.index + 1)
-
-    st.dataframe(
-        team_rankings.style.format({"Power": "{:+.2f}"}),
-        use_container_width=True,
-        hide_index=True
-    )
-
     st.caption(
-        "Team power is season-based latent strength plus average QB value. "
-        "Sandbox uses team power + QB deltas. "
-        "Week Slate EV uses full matchup-specific modeling."
+        "QB power is estimated from historical closing spreads with shrinkage. "
+        "Values represent point impact relative to a replacement-level starter."
     )
