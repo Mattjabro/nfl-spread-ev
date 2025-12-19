@@ -66,37 +66,33 @@ def load_last_week_qbs():
 def compute_team_power_with_recency(recency_lambda: float):
     """
     Recency-weighted team power using time-indexed latent strengths.
+    Returns PURE PYTHON FLOATS.
     """
     df = pd.read_csv(RESULTS_DIR / "team_power_raw.csv")
 
     df["team_strength"] = pd.to_numeric(df["team_strength"], errors="coerce")
     df["global_week"] = pd.to_numeric(df["global_week"], errors="coerce")
-
     df = df.dropna(subset=["team_strength", "global_week"])
 
-    required = {"team", "global_week", "team_strength"}
-    if not required.issubset(df.columns):
-        raise ValueError(f"team_power_raw.csv must contain {required}")
-
     max_week = df["global_week"].max()
-
     age = max_week - df["global_week"]
 
-    # IMPORTANT FIX: make weights an indexed Series
-    weights = pd.Series(
-        np.exp(-recency_lambda * age.values),
-        index=df.index
-    )
+    weights = np.exp(-recency_lambda * age.values)
 
-    df["weighted_strength"] = df["team_strength"] * weights
+    df["weighted_strength"] = df["team_strength"].values * weights
 
     team_power = (
-        df.groupby("team")
-          .apply(lambda x: x["weighted_strength"].sum() / weights.loc[x.index].sum())
-          .to_dict()
+        df.groupby("team", as_index=False)
+          .apply(
+              lambda x: np.sum(x["weighted_strength"].values)
+                        / np.sum(weights[x.index])
+          )
     )
 
-    return team_power
+    # CRITICAL LINE: force scalar floats
+    team_power = team_power.astype(float)
+
+    return dict(zip(team_power.index, team_power.values))
 
 # ============================================================
 # UI
