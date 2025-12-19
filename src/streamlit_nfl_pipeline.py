@@ -83,7 +83,12 @@ st.title("NFL Spread EV Tool — Week 16")
 
 games, QB_MAP, QB_LIST, ROOKIE_BASELINE = load_week_data()
 last_qb = load_last_week_qbs()
-TEAM_BASELINE = compute_team_baselines(games)
+@st.cache_data(show_spinner=True)
+def load_team_power():
+    df = pd.read_csv(RESULTS_DIR / "team_power_rankings.csv")
+    return dict(zip(df["team"], df["team_power"]))
+
+TEAM_BASELINE = load_team_power()
 
 with st.sidebar:
     st.header("Model Settings")
@@ -312,8 +317,9 @@ with tab3:
     )
 
     st.caption(
-        "QB power is league-anchored and estimated from closing spreads through the prior week. "
-        "Team power reflects average model-implied strength from the current week slate only. "
-        "This ranking is descriptive, not a season-long power rating."
-    )
+    "QB power is league-anchored and estimated from historical closing spreads. "
+    "Team power reflects season-long model-implied strength aggregated across all games "
+    "through the prior week. Sandbox uses team power + QB differences only, "
+    "while the Week Slate EV view reflects the full matchup-specific model."
+)
     
