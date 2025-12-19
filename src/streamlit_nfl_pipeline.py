@@ -61,28 +61,25 @@ def load_last_game_qbs(season, week):
     except Exception:
         return {}
 
-    # Only consider games strictly before the current week
+    # Only games before the current week
     pbp = pbp[pbp["week"] < week]
-
-    # Find the most recent week each team played
-    last_week_per_team = (
-        pbp.groupby("posteam")["week"].max().to_dict()
-    )
 
     passes = pbp[
         (pbp["play_type"] == "pass") &
         (pbp["passer_player_name"].notna())
     ]
 
-    # Keep only passes from each team's most recent game
+    # Find most recent week played by each team
+    last_week_per_team = (
+        passes.groupby("posteam")["week"].max().to_dict()
+    )
+
+    # Keep only passes from that week
     passes = passes[
-        passes.apply(
-            lambda r: r["week"] == last_week_per_team.get(r["posteam"]),
-            axis=1
-        )
+        passes["week"] == passes["posteam"].map(last_week_per_team)
     ]
 
-    # Pick QB with most attempts in that game
+    # QB with most attempts in that game
     qb_counts = (
         passes.groupby(["posteam", "passer_player_name"])
         .size()
