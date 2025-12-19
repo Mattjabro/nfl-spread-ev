@@ -54,7 +54,7 @@ def load_week_data():
 # ============================================================
 # DEFAULT QB = MOST PASSES LAST GAME
 # ============================================================
-@st.cache_data(show_spinner=True)
+@st.cache_data(show_spinner=True, ttl=0)
 def load_last_game_qbs(season, week):
     try:
         pbp = nfl.import_pbp_data(years=[season], downcast=True)
