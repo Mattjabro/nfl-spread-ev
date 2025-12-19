@@ -57,7 +57,7 @@ def load_week_data():
 @st.cache_data(show_spinner=True, ttl=0)
 def load_last_game_qbs(season, week):
     try:
-        pbp = nfl.import_pbp_data(years=[season - 1], downcast=True)
+        pbp = nfl.import_pbp_data(years=[season], downcast=True)
     except Exception:
         return {}
 
