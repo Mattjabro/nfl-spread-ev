@@ -96,7 +96,9 @@ with st.sidebar:
 
     odds_price = st.number_input("Odds price", value=int(ODDS_PRICE), step=1)
 
-tab1, tab2 = st.tabs(["Week Slate EV", "Matchup Sandbox"])
+tab1, tab2, tab3 = st.tabs(
+    ["Week Slate EV", "Matchup Sandbox", "Power Rankings"]
+)
 
 # ============================================================
 # TAB 1: WEEK SLATE EV TOOL
@@ -264,3 +266,46 @@ with tab2:
     else:
         st.metric("Best Bet", f"{away} {-market_spread:+.1f}")
         st.metric("EV", f"{ev_away:.3f}")
+
+# ============================================================
+# TAB 3: POWER RANKINGS
+# ============================================================
+with tab3:
+    st.subheader("Quarterback Power Rankings")
+
+    qb_rankings = (
+        pd.DataFrame({
+            "QB": QB_MAP.keys(),
+            "QB Value (pts)": QB_MAP.values()
+        })
+        .sort_values("QB Value (pts)", ascending=False)
+        .reset_index(drop=True)
+    )
+
+    st.dataframe(
+        qb_rankings.style.format({"QB Value (pts)": "{:+.2f}"}),
+        use_container_width=True
+    )
+
+    st.markdown("---")
+
+    st.subheader("Team Power Rankings")
+
+    team_rankings = (
+        pd.DataFrame({
+            "Team": TEAM_BASELINE.keys(),
+            "Team Power (pts)": TEAM_BASELINE.values()
+        })
+        .sort_values("Team Power (pts)", ascending=False)
+        .reset_index(drop=True)
+    )
+
+    st.dataframe(
+        team_rankings.style.format({"Team Power (pts)": "{:+.2f}"}),
+        use_container_width=True
+    )
+
+    st.caption(
+        "QB power reflects league-anchored QB impact estimated from closing spreads. "
+        "Team power reflects average model-implied strength across all games, independent of QB."
+    )
