@@ -55,18 +55,6 @@ def load_week_data():
 # DEFAULT QB = STARTER LAST WEEK
 # ============================================================
 @st.cache_data(show_spinner=True)
-def load_active_qbs_this_season():
-    qb_adj = pd.read_csv(RESULTS_DIR / "qb_adjustments.csv")
-
-    # Pick the strongest available signal automatically
-    for col in ["games_played", "dropbacks", "attempts", "snaps"]:
-        if col in qb_adj.columns:
-            return set(qb_adj.loc[qb_adj[col] > 0, "qb_name"])
-
-    # Fallback: assume everyone listed played
-    return set(qb_adj["qb_name"])
-
-@st.cache_data(show_spinner=True)
 def load_last_week_qbs():
     df = pd.read_csv(RESULTS_DIR / "last_week_starting_qbs.csv")
     return dict(zip(df["team"], df["qb"]))
@@ -79,7 +67,6 @@ st.title("NFL Spread EV Tool — Week 16")
 
 games, QB_MAP, QB_LIST, ROOKIE_BASELINE = load_week_data()
 last_qb = load_last_week_qbs()
-active_qbs_season = load_active_qbs_this_season()
 
 with st.sidebar:
     st.header("Model Settings")
@@ -191,11 +178,6 @@ with tab1:
 with tab2:
     st.subheader("Quarterback Power Rankings")
 
-    show_only_active = st.checkbox(
-        "Show only QBs who have played this season",
-        value=True
-    )
-
     qb_rankings = (
         pd.DataFrame({
             "QB": list(QB_MAP.keys()),
@@ -205,11 +187,6 @@ with tab2:
         .reset_index(drop=True)
     )
 
-    if show_only_active:
-        active_qbs = active_qbs_season
-        qb_rankings = qb_rankings[qb_rankings["QB"].isin(active_qbs)]
-
-    qb_rankings = qb_rankings.reset_index(drop=True)
     qb_rankings.insert(0, "Rank", qb_rankings.index + 1)
 
     st.dataframe(
