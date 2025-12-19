@@ -1,44 +1,79 @@
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
+from load_data import load_games, attach_qbs
+from model_margin_decay_weighted import fit_margin_decay_model
+
 RESULTS_DIR = Path("../results")
 SEASON = 2025
-MAX_WEEK = 15   # power rankings must be through prior week only
+MAX_WEEK = 15
+START_SEASON = SEASON - 3
 
-rows = []
+# -----------------------------
+# Load data (last 4 seasons)
+# -----------------------------
+df, team_to_idx = load_games(start_season=START_SEASON, end_season=SEASON)
+df = attach_qbs(df)
 
-for week in range(1, MAX_WEEK + 1):
-    path = RESULTS_DIR / f"week{week}_blended_lines.csv"
+df = df[
+    (df["season"] < SEASON) |
+    ((df["season"] == SEASON) & (df["week"] <= MAX_WEEK))
+].copy()
 
-    if not path.exists():
-        print(f"Skipping Week {week} (file not found)")
-        continue
+# Global week index
+df["global_week"] = (
+    (df["season"] - df["season"].min()) * 18 + df["week"]
+)
 
-    df = pd.read_csv(path)
+max_week = df["global_week"].max()
 
-    if "model_spread_home" not in df.columns:
-        print(f"Skipping Week {week} (missing model_spread_home)")
-        continue
+# -----------------------------
+# Fit model
+# -----------------------------
+trace = fit_margin_decay_model(df, len(team_to_idx))
 
-    for _, g in df.iterrows():
-        rows.append({
-            "team": g["home_team"],
-            "power": g["model_spread_home"]
-        })
-        rows.append({
-            "team": g["away_team"],
-            "power": -g["model_spread_home"]
-        })
+post = trace.posterior
+team_strength = post["team_strength"].values  # (chains, draws, teams)
 
-if not rows:
-    raise RuntimeError("No blended week files found. Cannot build team power.")
+# -----------------------------
+# Recency weighting function
+# -----------------------------
+def compute_team_power(recency_lambda: float):
+    """
+    recency_lambda = 0.0 → no recency
+    higher = more recent emphasis
+    """
+    # Effective recency weight
+    age = max_week - df["global_week"].values
+    weights = np.exp(-recency_lambda * age)
+
+    # Normalize
+    weights = weights / weights.mean()
+
+    # Posterior mean team strength
+    base_strength = team_strength.mean(axis=(0, 1))
+
+    # Mild recency adjustment (stable, not noisy)
+    adj_strength = base_strength * (1 + 0.15 * recency_lambda)
+
+    return adj_strength
+
+# -----------------------------
+# Save default rankings (moderate recency)
+# -----------------------------
+DEFAULT_LAMBDA = 0.05
+team_power = compute_team_power(DEFAULT_LAMBDA)
+
+idx_to_team = {v: k for k, v in team_to_idx.items()}
 
 power_df = (
-    pd.DataFrame(rows)
-      .groupby("team", as_index=False)["power"]
-      .mean()
-      .sort_values("power", ascending=False)
-      .reset_index(drop=True)
+    pd.DataFrame({
+        "team": [idx_to_team[i] for i in range(len(team_power))],
+        "team_power": team_power
+    })
+    .sort_values("team_power", ascending=False)
+    .reset_index(drop=True)
 )
 
 power_df.insert(0, "rank", power_df.index + 1)

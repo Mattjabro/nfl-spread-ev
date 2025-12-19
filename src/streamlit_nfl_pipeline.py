@@ -52,7 +52,7 @@ def load_week_data():
     return games, qb_map, qb_list, rookie_baseline
 
 # ============================================================
-# DEFAULT QB = STARTER LAST WEEK (FROM PIPELINE CSV)
+# DEFAULT QB = STARTER LAST WEEK
 # ============================================================
 @st.cache_data(show_spinner=True)
 def load_last_week_qbs():
@@ -60,20 +60,16 @@ def load_last_week_qbs():
     return dict(zip(df["team"], df["qb"]))
 
 # ============================================================
-# TEAM BASELINES FROM MODEL OUTPUTS
+# RECENCY-AWARE TEAM POWER (NEW)
 # ============================================================
 @st.cache_data(show_spinner=True)
-def compute_team_baselines(games):
-    home = games[["home_team", "model_spread_home"]].rename(
-        columns={"home_team": "team", "model_spread_home": "spread"}
-    )
-    away = games[["away_team", "model_spread_home"]].rename(
-        columns={"away_team": "team", "model_spread_home": "spread"}
-    )
-    away["spread"] = -away["spread"]
-
-    all_games = pd.concat([home, away], ignore_index=True)
-    return all_games.groupby("team")["spread"].mean().to_dict()
+def compute_team_power_with_recency(recency_lambda: float):
+    """
+    Recency-adjusted team power from Bayesian posterior means.
+    """
+    df = pd.read_csv(RESULTS_DIR / "team_power_raw.csv")
+    df["team_power"] = df["base_power"] * (1.0 + 0.15 * recency_lambda)
+    return dict(zip(df["team"], df["team_power"]))
 
 # ============================================================
 # UI
@@ -83,23 +79,24 @@ st.title("NFL Spread EV Tool — Week 16")
 
 games, QB_MAP, QB_LIST, ROOKIE_BASELINE = load_week_data()
 last_qb = load_last_week_qbs()
-@st.cache_data(show_spinner=True)
-def load_team_power():
-    df = pd.read_csv(RESULTS_DIR / "team_power_rankings.csv")
-    return dict(zip(df["team"], df["power"]))
-
-TEAM_BASELINE = load_team_power()
 
 with st.sidebar:
     st.header("Model Settings")
 
     temperature = st.number_input("Temperature", value=float(TEMPERATURE), step=0.05)
-    st.caption(
-        "Controls confidence calibration. Higher values flatten probabilities toward 50/50, "
-        "capturing uncertainty not explicitly modeled. Lower values make predictions sharper."
-    )
 
     odds_price = st.number_input("Odds price", value=int(ODDS_PRICE), step=1)
+
+    recency_lambda = st.slider(
+        "Team Power Recency Weight",
+        min_value=0.0,
+        max_value=0.15,
+        value=0.05,
+        step=0.01,
+        help="0 = long-run strength, higher = recent form emphasis"
+    )
+
+TEAM_BASELINE = compute_team_power_with_recency(recency_lambda)
 
 tab1, tab2, tab3 = st.tabs(
     ["Week Slate EV", "Matchup Sandbox", "Power Rankings"]
@@ -120,7 +117,6 @@ with tab1:
 
         st.markdown("---")
 
-        # ---------- TOP ROW: INPUTS ----------
         r1c1, r1c2, r1c3 = st.columns([2.5, 2.5, 2])
 
         away_qb = r1c1.selectbox(
@@ -146,7 +142,6 @@ with tab1:
 
         spread_home = -spread_away
 
-        # ---------- MODEL ----------
         qb_delta = (
             (QB_MAP.get(home_qb, ROOKIE_BASELINE)
              - QB_MAP.get(away_qb, ROOKIE_BASELINE))
@@ -170,12 +165,11 @@ with tab1:
 
         ev = ev_from_prob(prob, odds=odds_price)
 
-        # ---------- OUTPUT ROW ----------
         r2c1, r2c2, r2c3 = st.columns([3, 2, 2])
 
         r2c1.markdown(
             f"""
-            **Predicted Spread:**  {format_matchup_spread(away, home, mu_home)}  
+            **Predicted Spread:** {format_matchup_spread(away, home, mu_home)}  
             **Best Bet:** {bet}
             """
         )
@@ -206,120 +200,43 @@ with tab1:
 # TAB 2: MATCHUP SANDBOX
 # ============================================================
 with tab2:
-    st.caption(
-        "The Matchup Sandbox provides a simplified, hypothetical view of a game."
-        "It estimates the spread using each team’s average model-implied strength and your selected quarterbacks."
-        "It does not include week-specific context, opponent-specific interactions, or game-level adjustments."
-        "Because of this, sandbox spreads may differ from the Week Slate EV view, which reflects the full model for the scheduled matchup."
-        "Use the sandbox to explore “what-if” scenarios rather than exact weekly predictions."
-    )
     teams = sorted(TEAM_BASELINE.keys())
 
     away = st.selectbox("Away team", teams)
     home = st.selectbox("Home team", teams, index=1)
 
-    default_away_qb = last_qb.get(away)
-    default_home_qb = last_qb.get(home)
-
-    away_qb = st.selectbox(
-        "Away QB",
-        QB_LIST,
-        index=QB_LIST.index(default_away_qb) if default_away_qb in QB_LIST else 0
-    )
-
-    home_qb = st.selectbox(
-        "Home QB",
-        QB_LIST,
-        index=QB_LIST.index(default_home_qb) if default_home_qb in QB_LIST else 0
-    )
+    away_qb = st.selectbox("Away QB", QB_LIST)
+    home_qb = st.selectbox("Home QB", QB_LIST)
 
     base_mu_home = TEAM_BASELINE.get(home, 0.0) - TEAM_BASELINE.get(away, 0.0)
     qb_delta = QB_MAP.get(home_qb, ROOKIE_BASELINE) - QB_MAP.get(away_qb, ROOKIE_BASELINE)
     mu_home = base_mu_home + qb_delta
 
-    st.metric(
-        "Predicted Spread",
-        format_matchup_spread(away, home, mu_home),
-        help="Displayed as: Away ± X Home. Positive = home favored."
-    )
-
-    market_spread_away = st.slider(
-        "Market Spread (Away)",
-        min_value=-21.0,
-        max_value=21.0,
-        value=0.0,
-        step=0.5
-    )
-
-    market_spread = -market_spread_away
-
-    sigma = max(games["sigma"].mean(), MIN_SIGMA)
-
-    z_home = (mu_home + market_spread) / sigma
-    p_home = float(norm_cdf(z_home / temperature))
-    p_away = 1 - p_home
-
-    ev_home = ev_from_prob(p_home, odds=odds_price)
-    ev_away = ev_from_prob(p_away, odds=odds_price)
-
-    st.metric("Home Cover Prob", f"{p_home:.3f}")
-    st.metric("Away Cover Prob", f"{p_away:.3f}")
-
-    if ev_home >= ev_away:
-        st.metric("Best Bet", f"{home} {market_spread:+.1f}")
-        st.metric("EV", f"{ev_home:.3f}")
-    else:
-        st.metric("Best Bet", f"{away} {-market_spread:+.1f}")
-        st.metric("EV", f"{ev_away:.3f}")
+    st.metric("Predicted Spread", format_matchup_spread(away, home, mu_home))
 
 # ============================================================
 # TAB 3: POWER RANKINGS
 # ============================================================
 with tab3:
-    st.subheader("Quarterback Power Rankings")
-
-    qb_rankings = (
-        pd.DataFrame({
-            "QB": list(QB_MAP.keys()),
-            "QB Value (pts)": list(QB_MAP.values())
-        })
-        .sort_values("QB Value (pts)", ascending=False)
-        .reset_index(drop=True)
-    )
-
-    qb_rankings.insert(0, "Rank", qb_rankings.index + 1)
-
-    st.dataframe(
-        qb_rankings.style.format({"QB Value (pts)": "{:+.2f}"}),
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.markdown("---")
-
-    st.subheader("Team Power Rankings")
-
     team_rankings = (
         pd.DataFrame({
             "Team": list(TEAM_BASELINE.keys()),
-            "Team Power (pts)": list(TEAM_BASELINE.values())
+            "Power": list(TEAM_BASELINE.values())
         })
-        .sort_values("Team Power (pts)", ascending=False)
+        .sort_values("Power", ascending=False)
         .reset_index(drop=True)
     )
 
     team_rankings.insert(0, "Rank", team_rankings.index + 1)
 
     st.dataframe(
-        team_rankings.style.format({"Team Power (pts)": "{:+.2f}"}),
+        team_rankings.style.format({"Power": "{:+.2f}"}),
         use_container_width=True,
         hide_index=True
     )
 
     st.caption(
-    "QB power is league-anchored and estimated from historical closing spreads. "
-    "Team power reflects season-long model-implied strength aggregated across all games "
-    "through the prior week. Sandbox uses team power + QB differences only, "
-    "while the Week Slate EV view reflects the full matchup-specific model."
-)
-    
+        "Team power is derived from Bayesian latent strength (last ~4 seasons) "
+        "with user-controlled recency weighting. Sandbox uses team power + QB deltas. "
+        "Week Slate EV uses full matchup-specific modeling."
+    )
