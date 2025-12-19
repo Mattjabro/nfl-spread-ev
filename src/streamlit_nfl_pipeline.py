@@ -316,4 +316,4 @@ with tab3:
         "Team power reflects average model-implied strength from the current week slate only. "
         "This ranking is descriptive, not a season-long power rating."
     )
-    )
+    
