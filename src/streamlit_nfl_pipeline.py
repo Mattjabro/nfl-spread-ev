@@ -68,7 +68,15 @@ def compute_team_power_with_recency(recency_lambda: float):
     Recency-adjusted team power from Bayesian posterior means.
     """
     df = pd.read_csv(RESULTS_DIR / "team_power_raw.csv")
-    df["team_power"] = df["base_power"] * (1.0 + 0.15 * recency_lambda)
+    age = df["global_week"].max() - df["global_week"]
+    weights = np.exp(-recency_lambda * age)
+
+    df["weighted"] = df["team_strength"] * weights
+
+    team_power = (
+        df.groupby("team")
+        .apply(lambda x: x["weighted"].sum() / weights.loc[x.index].sum())
+    )
     return dict(zip(df["team"], df["team_power"]))
 
 # ============================================================
@@ -211,6 +219,24 @@ with tab2:
 # TAB 3: POWER RANKINGS
 # ============================================================
 with tab3:
+    st.subheader("Quarterback Power Rankings")
+
+    qb_rankings = (
+        pd.DataFrame({
+            "QB": list(QB_MAP.keys()),
+            "QB Value (pts)": list(QB_MAP.values())
+        })
+        .sort_values("QB Value (pts)", ascending=False)
+        .reset_index(drop=True)
+    )
+
+    qb_rankings.insert(0, "Rank", qb_rankings.index + 1)
+
+    st.dataframe(
+        qb_rankings.style.format({"QB Value (pts)": "{:+.2f}"}),
+        use_container_width=True,
+        hide_index=True
+    )
     st.subheader("Power Rankings")
 
     recency_lambda = st.slider(

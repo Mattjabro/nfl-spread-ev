@@ -1,33 +1,129 @@
-team,base_power
-LA,2.20501394912767
-BUF,3.4316845657417816
-ATL,-3.061272881470478
-NO,-1.2268680720925695
-CAR,-2.4404223009717483
-CLE,-2.656596611426551
-CHI,0.48790603561582757
-SF,0.7680776920469873
-CIN,-0.7090659191053462
-PIT,0.14612655809372369
-DET,4.413569141928655
-PHI,1.5745674290145348
-HOU,1.7112185287456576
-IND,0.41105059988301984
-MIA,-0.0011401960220076225
-NE,-0.2473501912322018
-NYJ,-2.6152266326021114
-BAL,1.8789348801439747
-WAS,-1.8072837607960757
-JAX,1.0844403424466285
-ARI,-1.3980453517439193
-KC,-0.14653656993878045
-LAC,0.26319259793092564
-LV,-3.407041454001347
-MIN,1.803887738672603
-GB,2.102382851448814
-TEN,-4.154080116935919
-NYG,-2.5360029045171926
-DAL,-0.5845176739384743
-TB,0.21132346597748483
-SEA,3.9058913096211567
-DEN,0.8929468763642735
+team,global_week,team_strength
+LA,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(2.19436229)
+Coordinates:
+    team_strength_dim_0  int64 8B 0"
+BUF,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(3.40081745)
+Coordinates:
+    team_strength_dim_0  int64 8B 1"
+ATL,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-3.03965086)
+Coordinates:
+    team_strength_dim_0  int64 8B 2"
+NO,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-1.25882028)
+Coordinates:
+    team_strength_dim_0  int64 8B 3"
+CAR,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-2.43261203)
+Coordinates:
+    team_strength_dim_0  int64 8B 4"
+CLE,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-2.70854428)
+Coordinates:
+    team_strength_dim_0  int64 8B 5"
+CHI,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(0.46420381)
+Coordinates:
+    team_strength_dim_0  int64 8B 6"
+SF,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(0.79550492)
+Coordinates:
+    team_strength_dim_0  int64 8B 7"
+CIN,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-0.73593191)
+Coordinates:
+    team_strength_dim_0  int64 8B 8"
+PIT,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(0.09671719)
+Coordinates:
+    team_strength_dim_0  int64 8B 9"
+DET,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(4.39675573)
+Coordinates:
+    team_strength_dim_0  int64 8B 10"
+PHI,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(1.54260623)
+Coordinates:
+    team_strength_dim_0  int64 8B 11"
+HOU,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(1.68966268)
+Coordinates:
+    team_strength_dim_0  int64 8B 12"
+IND,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(0.36729527)
+Coordinates:
+    team_strength_dim_0  int64 8B 13"
+MIA,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-0.05049743)
+Coordinates:
+    team_strength_dim_0  int64 8B 14"
+NE,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-0.28146677)
+Coordinates:
+    team_strength_dim_0  int64 8B 15"
+NYJ,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-2.66550597)
+Coordinates:
+    team_strength_dim_0  int64 8B 16"
+BAL,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(1.84231331)
+Coordinates:
+    team_strength_dim_0  int64 8B 17"
+WAS,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-1.78584697)
+Coordinates:
+    team_strength_dim_0  int64 8B 18"
+JAX,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(1.05912374)
+Coordinates:
+    team_strength_dim_0  int64 8B 19"
+ARI,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-1.38594894)
+Coordinates:
+    team_strength_dim_0  int64 8B 20"
+KC,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-0.14387955)
+Coordinates:
+    team_strength_dim_0  int64 8B 21"
+LAC,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(0.28002768)
+Coordinates:
+    team_strength_dim_0  int64 8B 22"
+LV,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-3.40351389)
+Coordinates:
+    team_strength_dim_0  int64 8B 23"
+MIN,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(1.79878999)
+Coordinates:
+    team_strength_dim_0  int64 8B 24"
+GB,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(2.09692875)
+Coordinates:
+    team_strength_dim_0  int64 8B 25"
+TEN,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-4.19327343)
+Coordinates:
+    team_strength_dim_0  int64 8B 26"
+NYG,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-2.55838847)
+Coordinates:
+    team_strength_dim_0  int64 8B 27"
+DAL,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(-0.63482729)
+Coordinates:
+    team_strength_dim_0  int64 8B 28"
+TB,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(0.2276945)
+Coordinates:
+    team_strength_dim_0  int64 8B 29"
+SEA,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(3.89198717)
+Coordinates:
+    team_strength_dim_0  int64 8B 30"
+DEN,69,"<xarray.DataArray 'team_strength' ()> Size: 8B
+array(0.85129927)
+Coordinates:
+    team_strength_dim_0  int64 8B 31"
