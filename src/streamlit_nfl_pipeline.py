@@ -196,6 +196,5 @@ with tab2:
     )
 
     st.caption(
-        "QB power is estimated from historical closing spreads with shrinkage. "
-        "Values represent point impact relative to a replacement-level starter."
+        "QB values reflect estimated point impact on the betting spread, learned from historical closing lines and shrunk toward league average to reduce noise."
     )
