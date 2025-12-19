@@ -59,22 +59,35 @@ def load_last_game_qbs(season, week):
     try:
         pbp = nfl.import_pbp_data(years=[season - 1], downcast=True)
     except Exception:
-        # nfl_data_py crashes on Python 3.13
-        # Return empty defaults so app still runs
         return {}
 
+    # Only consider games strictly before the current week
     pbp = pbp[pbp["week"] < week]
+
+    # Find the most recent week each team played
+    last_week_per_team = (
+        pbp.groupby("posteam")["week"].max().to_dict()
+    )
 
     passes = pbp[
         (pbp["play_type"] == "pass") &
         (pbp["passer_player_name"].notna())
     ]
 
+    # Keep only passes from each team's most recent game
+    passes = passes[
+        passes.apply(
+            lambda r: r["week"] == last_week_per_team.get(r["posteam"]),
+            axis=1
+        )
+    ]
+
+    # Pick QB with most attempts in that game
     qb_counts = (
-        passes.groupby(["posteam", "week", "passer_player_name"])
+        passes.groupby(["posteam", "passer_player_name"])
         .size()
         .reset_index(name="attempts")
-        .sort_values(["posteam", "week", "attempts"])
+        .sort_values(["posteam", "attempts"])
     )
 
     return (
