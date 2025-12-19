@@ -86,7 +86,7 @@ last_qb = load_last_week_qbs()
 @st.cache_data(show_spinner=True)
 def load_team_power():
     df = pd.read_csv(RESULTS_DIR / "team_power_rankings.csv")
-    return dict(zip(df["team"], df["team_power"]))
+    return dict(zip(df["team"], df["power"]))
 
 TEAM_BASELINE = load_team_power()
 
