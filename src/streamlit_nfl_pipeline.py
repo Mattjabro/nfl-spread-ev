@@ -65,19 +65,28 @@ def load_last_week_qbs():
 @st.cache_data(show_spinner=True)
 def compute_team_power_with_recency(recency_lambda: float):
     """
-    Recency-adjusted team power from Bayesian posterior means.
+    Recency-weighted team power using time-indexed latent strengths.
     """
     df = pd.read_csv(RESULTS_DIR / "team_power_raw.csv")
-    age = df["global_week"].max() - df["global_week"]
+
+    required = {"team", "global_week", "team_strength"}
+    if not required.issubset(df.columns):
+        raise ValueError(f"team_power_raw.csv must contain {required}")
+
+    max_week = df["global_week"].max()
+
+    age = max_week - df["global_week"]
     weights = np.exp(-recency_lambda * age)
 
-    df["weighted"] = df["team_strength"] * weights
+    df = df.assign(weighted_strength=df["team_strength"] * weights)
 
     team_power = (
         df.groupby("team")
-        .apply(lambda x: x["weighted"].sum() / weights.loc[x.index].sum())
+          .apply(lambda x: x["weighted_strength"].sum() / weights[x.index].sum())
+          .to_dict()
     )
-    return dict(zip(df["team"], df["team_power"]))
+
+    return team_power
 
 # ============================================================
 # UI
