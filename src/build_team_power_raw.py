@@ -25,46 +25,38 @@ df = df[
 ].copy()
 
 # Global week index
-df["global_week"] = (
-    (df["season"] - df["season"].min()) * 18 + df["week"]
-)
+df["global_week"] = (df["season"] - df["season"].min()) * 18 + df["week"]
 
 # -----------------------------
-# Fit model once
+# Fit model ONCE
 # -----------------------------
 trace = fit_margin_decay_model(df, len(team_to_idx))
 post = trace.posterior
 
-# IMPORTANT: extract numpy floats
-team_strength = (
-    post["team_strength"]
-    .mean(axis=(0, 1))
-    .values
-)
+team_strength = post["team_strength"].mean(axis=(0, 1))
 
 idx_to_team = {v: k for k, v in team_to_idx.items()}
 
 # -----------------------------
-# Build time-indexed power rows
+# Expand to time-indexed rows
 # -----------------------------
 rows = []
-
 for _, g in df.iterrows():
     rows.append({
         "team": g["home_team"],
-        "global_week": int(g["global_week"]),
-        "team_strength": float(team_strength[team_to_idx[g["home_team"]]])
+        "global_week": g["global_week"],
+        "team_strength": team_strength[team_to_idx[g["home_team"]]]
     })
     rows.append({
         "team": g["away_team"],
-        "global_week": int(g["global_week"]),
-        "team_strength": float(team_strength[team_to_idx[g["away_team"]]])
+        "global_week": g["global_week"],
+        "team_strength": team_strength[team_to_idx[g["away_team"]]]
     })
 
-power_raw = pd.DataFrame(rows)
+out_df = pd.DataFrame(rows)
 
 out = RESULTS_DIR / "team_power_raw.csv"
-power_raw.to_csv(out, index=False)
+out_df.to_csv(out, index=False)
 
 print(f"Saved {out}")
-print(power_raw.head())
+print(out_df.head())
