@@ -10,7 +10,6 @@ MAX_WEEK_2025 = 15
 # --------------------------------------------------
 vegas = pd.read_csv("../results/vegas_closing_lines.csv")
 
-# Restrict 2025 to completed weeks only
 vegas = vegas[
     (vegas["season"] < 2025) |
     ((vegas["season"] == 2025) & (vegas["week"] <= MAX_WEEK_2025))
@@ -24,20 +23,21 @@ pbp = nfl.import_pbp_data(
     downcast=True
 )
 
-# Restrict pbp to completed weeks
 pbp = pbp[
     (pbp["season"] < 2025) |
     ((pbp["season"] == 2025) & (pbp["week"] <= MAX_WEEK_2025))
 ]
 
-# Keep only pass plays
+# --------------------------------------------------
+# Keep pass plays only
+# --------------------------------------------------
 passes = pbp[
     (pbp["play_type"] == "pass") &
     (pbp["passer_player_name"].notna())
 ].copy()
 
 # --------------------------------------------------
-# Identify primary QB per team/game
+# Identify primary QB per TEAM per WEEK
 # --------------------------------------------------
 qb_games = (
     passes.groupby(
@@ -47,7 +47,7 @@ qb_games = (
     .reset_index(name="pass_attempts")
 )
 
-# Keep QB with most attempts per team/game
+# QB with most attempts for that team in that week
 qb_games = (
     qb_games.sort_values("pass_attempts", ascending=False)
     .groupby(["season", "week", "posteam"])
@@ -55,49 +55,76 @@ qb_games = (
 )
 
 qb_games = qb_games.rename(columns={
-    "posteam": "home_team",
+    "posteam": "team",
     "passer_player_name": "qb_name"
 })
 
 # --------------------------------------------------
-# Merge with Vegas spreads
+# Attach QBs to Vegas data (SEASON + WEEK + TEAM)
 # --------------------------------------------------
 df = vegas.merge(
-    qb_games,
+    qb_games.rename(columns={"team": "home_team", "qb_name": "home_qb"}),
     on=["season", "week", "home_team"],
     how="left"
 )
 
-df = df.dropna(subset=["qb_name"])
+df = df.merge(
+    qb_games.rename(columns={"team": "away_team", "qb_name": "away_qb"}),
+    on=["season", "week", "away_team"],
+    how="left"
+)
+
+df = df.dropna(subset=["home_qb", "away_qb"])
 
 # --------------------------------------------------
-# Estimate QB value (LEAGUE-ANCHORED)
+# Estimate QB value (league-anchored)
 # --------------------------------------------------
-# IMPORTANT:
-# QB value is measured relative to the league, NOT the team.
-# This allows QBs to explain persistent team strength.
-
 league_avg_spread = df["closing_spread_home"].mean()
 
-df["qb_value"] = df["closing_spread_home"] - league_avg_spread
+home_vals = df.assign(
+    qb=df["home_qb"],
+    qb_value=df["closing_spread_home"] - league_avg_spread
+)[["qb", "qb_value"]]
+
+away_vals = df.assign(
+    qb=df["away_qb"],
+    qb_value=-(df["closing_spread_home"] - league_avg_spread)
+)[["qb", "qb_value"]]
 
 qb_values = (
-    df.groupby("qb_name")
-      .agg(
-          qb_value_points=("qb_value", "mean"),
-          games=("qb_value", "count")
-      )
-      .reset_index()
-      .sort_values("qb_value_points", ascending=False)
+    pd.concat([home_vals, away_vals])
+    .groupby("qb")
+    .agg(
+        qb_value_points=("qb_value", "mean"),
+        games=("qb_value", "count")
+    )
+    .reset_index()
+    .rename(columns={"qb": "qb_name"})
+    .sort_values("qb_value_points", ascending=False)
 )
 
 # --------------------------------------------------
-# Save output
+# Save outputs
 # --------------------------------------------------
-out = "../results/estimated_qb_values.csv"
-qb_values.to_csv(out, index=False)
+qb_values.to_csv("../results/estimated_qb_values.csv", index=False)
 
-print(f"Saved estimated QB values to {out}")
-print(f"Includes data through Week {MAX_WEEK_2025}, 2025")
-print("\nTop QBs:")
-print(qb_values.head(10))
+# ALSO SAVE last-week starter mapping for Streamlit
+last_week = df[
+    (df["season"] == 2025) & (df["week"] == MAX_WEEK_2025)
+]
+
+last_qbs = pd.concat([
+    last_week[["home_team", "home_qb"]].rename(
+        columns={"home_team": "team", "home_qb": "qb"}
+    ),
+    last_week[["away_team", "away_qb"]].rename(
+        columns={"away_team": "team", "away_qb": "qb"}
+    )
+])
+
+last_qbs.to_csv("../results/last_week_starting_qbs.csv", index=False)
+
+print("Saved:")
+print("- estimated_qb_values.csv")
+print("- last_week_starting_qbs.csv")
+print(f"Data through Week {MAX_WEEK_2025}, 2025")

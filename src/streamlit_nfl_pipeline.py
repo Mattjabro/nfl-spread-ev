@@ -52,47 +52,20 @@ def load_week_data():
     return games, qb_map, qb_list, rookie_baseline
 
 # ============================================================
-# DEFAULT QB = MOST PASSES LAST GAME
+# DEFAULT QB = STARTER LAST WEEK (FROM PIPELINE CSV)
 # ============================================================
-@st.cache_data(show_spinner=True, ttl=0)
+@st.cache_data(show_spinner=True)
 def load_last_game_qbs(season, week):
-    try:
-        pbp = nfl.import_pbp_data(years=[season], downcast=True)
-    except Exception:
+    # produced by estimate_qb_values_from_spreads.py
+    p = RESULTS_DIR / "last_week_starting_qbs.csv"
+    if not p.exists():
         return {}
 
-    # Only games before the current week
-    pbp = pbp[pbp["week"] < week]
+    df = pd.read_csv(p)
 
-    passes = pbp[
-        (pbp["play_type"] == "pass") &
-        (pbp["passer_player_name"].notna())
-    ]
-
-    # Find most recent week played by each team
-    last_week_per_team = (
-        passes.groupby("posteam")["week"].max().to_dict()
-    )
-
-    # Keep only passes from that week
-    passes = passes[
-        passes["week"] == passes["posteam"].map(last_week_per_team)
-    ]
-
-    # QB with most attempts in that game
-    qb_counts = (
-        passes.groupby(["posteam", "passer_player_name"])
-        .size()
-        .reset_index(name="attempts")
-        .sort_values(["posteam", "attempts"])
-    )
-
-    return (
-        qb_counts.groupby("posteam")
-        .tail(1)
-        .set_index("posteam")["passer_player_name"]
-        .to_dict()
-    )
+    # Expected columns: team, qb
+    # Return: { "SEA": "G.Smith", ... }
+    return dict(zip(df["team"], df["qb"]))
 
 # ============================================================
 # TEAM BASELINES FROM MODEL OUTPUTS
