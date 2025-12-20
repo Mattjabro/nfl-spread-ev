@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import math
-import nfl_data_py as nfl
 from pathlib import Path
 
 # ============================================================
@@ -35,6 +34,17 @@ def ev_from_prob(p, odds=-110):
 def format_matchup_spread(away, home, mu_home):
     sign = "+" if mu_home > 0 else ""
     return f"{away} {sign}{mu_home:.2f} {home}"
+
+def american_to_b(odds):
+    if odds < 0:
+        return 100 / abs(odds)
+    return odds / 100
+
+def kelly_fraction(p, odds=-110):
+    b = american_to_b(odds)
+    q = 1 - p
+    f = (b * p - q) / b
+    return max(f, 0.0)
 
 # ============================================================
 # LOAD MODEL OUTPUTS
@@ -73,6 +83,32 @@ with st.sidebar:
 
     temperature = st.number_input("Temperature", value=float(TEMPERATURE), step=0.05)
     odds_price = st.number_input("Odds price", value=int(ODDS_PRICE), step=1)
+
+    st.divider()
+    st.header("Bet Sizing")
+
+    bankroll = st.number_input(
+        "Bankroll ($)",
+        min_value=0.0,
+        value=100.0,
+        step=10.0
+    )
+
+    fractional_kelly = st.slider(
+        "Fractional Kelly",
+        min_value=0.05,
+        max_value=1.0,
+        value=0.25,
+        step=0.05
+    )
+
+    kelly_cap = st.slider(
+        "Max % of bankroll per bet",
+        min_value=0.5,
+        max_value=10.0,
+        value=2.0,
+        step=0.5
+    ) / 100.0
 
 tab1, tab2 = st.tabs(
     ["Week Slate EV", "QB Power Rankings"]
@@ -141,6 +177,10 @@ with tab1:
 
         ev = ev_from_prob(prob, odds=odds_price)
 
+        kelly_raw = kelly_fraction(prob, odds_price)
+        kelly_frac = min(fractional_kelly * kelly_raw, kelly_cap)
+        stake_dollars = bankroll * kelly_frac
+
         r2c1, r2c2, r2c3 = st.columns([3, 2, 2])
 
         r2c1.markdown(
@@ -151,14 +191,24 @@ with tab1:
         )
 
         r2c2.metric("Cover Prob", f"{prob:.3f}")
-        r2c3.metric("Best Bet EV", f"{ev:.3f}")
+        r2c3.metric("EV", f"{ev:.3f}")
 
+        if kelly_frac > 0 and ev > 0:
+            st.caption(
+                f"**Kelly stake:** {kelly_frac*100:.2f}% "
+                f"(${stake_dollars:,.2f})"
+            )
+        else:
+            st.caption("**Kelly stake:** $0.00 (no positive edge)")
+            
         rows.append({
             "matchup": f"{away} @ {home}",
             "bet": bet,
             "model_mu": format_matchup_spread(away, home, mu_home),
             "cover_prob": prob,
-            "bet_ev": ev
+            "bet_ev": ev,
+            "kelly_pct": kelly_frac * 100,
+            "stake_$": stake_dollars
         })
 
     out_df = pd.DataFrame(rows).sort_values("bet_ev", ascending=False)
@@ -167,10 +217,12 @@ with tab1:
     st.dataframe(
         out_df.style.format({
             "cover_prob": "{:.3f}",
-            "bet_ev": "{:.3f}"
+            "bet_ev": "{:.3f}",
+            "kelly_pct": "{:.2f}%",
+            "stake_$": "${:,.2f}"
         }),
         use_container_width=True
-    )
+)
 
 # ============================================================
 # TAB 2: QB POWER RANKINGS
