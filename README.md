@@ -140,8 +140,9 @@ This keeps the strategy stable even when the model is confident.
 
 ### Install Dependencies
 
-```bash
 pip install pymc arviz streamlit nfl_data_py pandas numpy
+
+---
 
 ### 1. Quarterback Valuation (Run Only When Needed)
 
@@ -150,22 +151,44 @@ These steps only need to be rerun when:
 - You want to refresh QB values using newly completed games
 - Early in the season when QB samples are small
 
-**Estimate raw QB values from historical spreads**
-```bash
-python estimate_qb_values_from_spreads.py #infers QB point value by anchoring to historical Vegas spreads, relative to league average
+Estimate raw QB values from historical spreads:
 
-python build_qb_adjustments.py #produces qb_adjustments.csv, which is what the model actually consumes
+python estimate_qb_values_from_spreads.py  
+(infers QB point value by anchoring to historical Vegas spreads, relative to league average)
 
-2. Pull Current Vegas Lines (Run Weekly)
+Build shrunk QB adjustments used by the model:
 
-python get_odds_api_lines.py #saves the current Vegas spreads for the target week into results/vegas_lines_2025.csv
+python build_qb_adjustments.py  
+(produces qb_adjustments.csv, which is what the model actually consumes)
 
-3.Generate Weekly Predictions (Run Weekly) 
+---
 
-python predict_week_blended.py #Train the Bayesian model on all past games and generate predictions for the upcoming slate
-#Inside the script, set the target week explicitly EX: preds = predict_week(2025, 16)
-#Results are written to: results/week16_blended_lines.csv
+### 2. Pull Current Vegas Lines (Run Weekly)
 
-4. Interactive Evaluation
+python get_odds_api_lines.py  
 
-streamlit run src/streamlit_nfl_pipeline.py #Streamlit app to explore predictions, EV, and bet sizing
+Saves the current Vegas spreads for the target week to:  
+results/vegas_lines_2025.csv
+
+---
+
+### 3. Generate Weekly Predictions (Run Weekly)
+
+python predict_week_blended.py  
+
+Trains the Bayesian model on all past games and generates predictions for the upcoming slate.
+
+Inside the script, set the target week explicitly, for example:  
+preds = predict_week(2025, 16)
+
+Results are written to:  
+results/week16_blended_lines.csv
+
+---
+
+### 4. Interactive Evaluation
+
+streamlit run src/streamlit_nfl_pipeline.py  
+
+Launches the Streamlit app to explore predictions, expected value, and Kelly bet sizing.
+
