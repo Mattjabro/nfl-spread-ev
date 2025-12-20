@@ -3,6 +3,12 @@ import pandas as pd
 import numpy as np
 import math
 from pathlib import Path
+from scipy.stats import t
+
+NU = 6  # degrees of freedom (tunable later)
+
+def t_cdf(x, df):
+    return t.cdf(x, df=df)
 
 # ============================================================
 # CONFIG
@@ -198,8 +204,15 @@ with tab1:
         mu_home = float(g["model_spread_home"]) + qb_delta
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
-        z_home = (mu_home + spread_home) / sigma
-        p_home = float(norm_cdf(z_home / temperature))
+        base_sigma = max(float(g["sigma"]), MIN_SIGMA)
+
+        def sigma_adjusted(base_sigma, spread):
+            return base_sigma * (0.85 + 0.15 * np.exp(-abs(spread) / 6))
+
+        sigma = sigma_adjusted(base_sigma, spread_home)
+        skew_adj = 0.15 * np.sign(mu_home)  # small favorite bias
+        z_home = (mu_home + spread_home + skew_adj) / sigma
+        p_home = float(t_cdf(z_home / temperature, df=NU))
         p_away = 1 - p_home
 
         if p_home >= p_away:
