@@ -3,7 +3,14 @@ import pandas as pd
 import nfl_data_py as nfl
 
 from load_data import load_games, attach_qbs
-from model_margin_decay_weighted import fit_margin_decay_model
+from model_margin_decay_season_boost import fit_margin_decay_model
+
+# --------------------------------------------------
+# TUNED MODEL HYPERPARAMETERS
+# --------------------------------------------------
+DECAY_RATE = 0.015
+SEASON_BOOST = 2.5
+
 
 # --------------------------------------------------
 # LOAD BLEND WEIGHTS
@@ -21,7 +28,7 @@ def get_edge_bin(abs_edge):
     else:
         return "huge"
 
-def predict_week(season, week, decay_rate=0.02):
+def predict_week(season, week):
     # --------------------------------------------------
     # LOAD HISTORICAL DATA (FOR TRAINING)
     # --------------------------------------------------
@@ -36,7 +43,19 @@ def predict_week(season, week, decay_rate=0.02):
         ((hist_df["season"] == season) & (hist_df["week"] < week))
     ]
 
-    trace = fit_margin_decay_model(train, len(team_to_idx), decay_rate)
+    trace = fit_margin_decay_model(
+        train,
+        len(team_to_idx),
+        decay_rate=DECAY_RATE,
+        season_boost=SEASON_BOOST,
+        prediction_season=season
+    )
+
+    print(
+        f"Model fit: decay_rate={DECAY_RATE}, "
+        f"season_boost={SEASON_BOOST}, "
+        f"trained through {season} week {week-1}"
+    )
 
     post = trace.posterior
     team_s = post["team_strength"].values
