@@ -81,8 +81,27 @@ last_qb = load_last_week_qbs()
 with st.sidebar:
     st.header("Model Settings")
 
-    temperature = st.number_input("Temperature", value=float(TEMPERATURE), step=0.05)
-    odds_price = st.number_input("Odds price", value=int(ODDS_PRICE), step=1)
+    temperature = st.number_input(
+        "Temperature",
+        value=float(TEMPERATURE),
+        step=0.05,
+        help=(
+            "Controls how confident the model is in its predictions. "
+            "Higher temperature softens probabilities toward 50%, "
+            "lower temperature makes them more extreme. "
+            "Tuned via historical calibration."
+        )
+    )
+
+    odds_price = st.number_input(
+        "Odds price",
+        value=int(ODDS_PRICE),
+        step=1,
+        help=(
+            "American odds used to compute EV and Kelly sizing. "
+            "Default -110 assumes standard spread pricing."
+        )
+    )
 
     st.divider()
     st.header("Bet Sizing")
@@ -91,7 +110,11 @@ with st.sidebar:
         "Bankroll ($)",
         min_value=0.0,
         value=100.0,
-        step=10.0
+        step=10.0,
+        help=(
+            "Total bankroll used to size bets. "
+            "Kelly stakes are calculated as a fraction of this value."
+        )
     )
 
     fractional_kelly = st.slider(
@@ -99,7 +122,13 @@ with st.sidebar:
         min_value=0.05,
         max_value=1.0,
         value=0.25,
-        step=0.05
+        step=0.05,
+        help=(
+            "Scales down the full Kelly bet size to reduce risk from "
+            "model error. For example, 0.25 means betting 25% of "
+            "the full Kelly recommendation. Professionals typically "
+            "use 0.25–0.5."
+        )
     )
 
     kelly_cap = st.slider(
@@ -107,12 +136,13 @@ with st.sidebar:
         min_value=0.5,
         max_value=10.0,
         value=2.0,
-        step=0.5
+        step=0.5,
+        help=(
+            "Hard cap on bet size, regardless of Kelly output. "
+            "Prevents overbetting when the model is very confident. "
+            "Acts as a safety constraint."
+        )
     ) / 100.0
-
-tab1, tab2 = st.tabs(
-    ["Week Slate EV", "QB Power Rankings"]
-)
 
 # ============================================================
 # TAB 1: WEEK SLATE EV TOOL
