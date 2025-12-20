@@ -136,25 +136,6 @@ This keeps the strategy stable even when the model is confident.
 
 ---
 
-## Project Structure
-
-nfl_bayes_model/
-├── src/
-│   ├── load_data.py                 # Game + QB data loading
-│   ├── model_margin_decay.py        # Bayesian model definition
-│   ├── predict_week_blended.py      # Weekly predictions
-│   ├── streamlit_nfl_pipeline.py    # Interactive app
-│
-├── results/
-│   ├── vegas_closing_lines.csv
-│   ├── qb_adjustments.csv
-│   ├── week*_blended_lines.csv
-│   └── predictions.csv
-│
-└── README.md
-
----
-
 ## How to Run
 
 ### Install Dependencies
@@ -162,5 +143,29 @@ nfl_bayes_model/
 ```bash
 pip install pymc arviz streamlit nfl_data_py pandas numpy
 
-streamlit run src/streamlit_nfl_pipeline.py
+### 1. Quarterback Valuation (Run Only When Needed)
 
+These steps only need to be rerun when:
+- A meaningful QB change occurs
+- You want to refresh QB values using newly completed games
+- Early in the season when QB samples are small
+
+**Estimate raw QB values from historical spreads**
+```bash
+python estimate_qb_values_from_spreads.py #infers QB point value by anchoring to historical Vegas spreads, relative to league average
+
+python build_qb_adjustments.py #produces qb_adjustments.csv, which is what the model actually consumes
+
+2. Pull Current Vegas Lines (Run Weekly)
+
+python get_odds_api_lines.py #saves the current Vegas spreads for the target week into results/vegas_lines_2025.csv
+
+3.Generate Weekly Predictions (Run Weekly) 
+
+python predict_week_blended.py #Train the Bayesian model on all past games and generate predictions for the upcoming slate
+#Inside the script, set the target week explicitly EX: preds = predict_week(2025, 16)
+#Results are written to: results/week16_blended_lines.csv
+
+4. Interactive Evaluation
+
+streamlit run src/streamlit_nfl_pipeline.py #Streamlit app to explore predictions, EV, and bet sizing
