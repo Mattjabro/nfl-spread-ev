@@ -134,7 +134,7 @@ with st.sidebar:
     kelly_cap = st.slider(
         "Max % of bankroll per bet",
         min_value=0.5,
-        max_value=10.0,
+        max_value=100.0,
         value=2.0,
         step=0.5,
         help=(
