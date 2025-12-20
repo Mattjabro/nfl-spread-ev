@@ -3,12 +3,7 @@ import pandas as pd
 import numpy as np
 import math
 from pathlib import Path
-from scipy.stats import t
 
-NU = 6  # degrees of freedom (tunable later)
-
-def t_cdf(x, df):
-    return t.cdf(x, df=df)
 
 # ============================================================
 # CONFIG
@@ -24,9 +19,21 @@ RESULTS_DIR = Path("results")
 # ============================================================
 # HELPERS
 # ============================================================
+def sigma_adjusted(base_sigma, spread_home):
+    """
+    Inflate variance slightly for large spreads to reflect
+    higher blowout uncertainty.
+    """
+    return base_sigma * (1 + 0.08 * abs(spread_home))
+
 def norm_cdf(x):
     x = np.asarray(x)
     return 0.5 * (1 + np.vectorize(math.erf)(x / np.sqrt(2)))
+
+def student_t_cdf(x, df):
+    x = np.asarray(x, dtype=float)
+    adj = x * np.sqrt((df - 2) / df)
+    return norm_cdf(adj)
 
 def ev_from_prob(p, odds=-110):
     if odds < 0:
@@ -205,14 +212,13 @@ with tab1:
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
         base_sigma = max(float(g["sigma"]), MIN_SIGMA)
-
-        def sigma_adjusted(base_sigma, spread):
-            return base_sigma * (0.85 + 0.15 * np.exp(-abs(spread) / 6))
-
         sigma = sigma_adjusted(base_sigma, spread_home)
-        skew_adj = 0.15 * np.sign(mu_home)  # small favorite bias
+
+        skew_adj = 0.15 * np.sign(mu_home)
+
         z_home = (mu_home + spread_home + skew_adj) / sigma
-        p_home = float(t_cdf(z_home / temperature, df=NU))
+
+        p_home = float(student_t_cdf(z_home / temperature, df=6))
         p_away = 1 - p_home
 
         if p_home >= p_away:
