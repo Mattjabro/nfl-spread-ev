@@ -10,7 +10,7 @@ from pathlib import Path
 # ============================================================
 SEASON = 2025
 WEEK = 16
-TEMPERATURE = 2.35
+TEMPERATURE = 1.7
 ODDS_PRICE = -110
 MIN_SIGMA = 1e-6
 
