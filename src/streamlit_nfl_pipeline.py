@@ -61,9 +61,11 @@ def kelly_fraction(p, odds=-110):
 
 def color_results(val):
     if "Win" in val:
-        return "background-color: #d4f8d4; color: black"  # light green
-    elif "Loss" in val:
-        return "background-color: #f8d4d4; color: black"  # light red
+        return "background-color: #d4f8d4; color: black"
+    if "Loss" in val:
+        return "background-color: #f8d4d4; color: black"
+    if "Push" in val:
+        return "background-color: #e6e6e6; color: black"
     return ""
 
 # ============================================================
@@ -357,66 +359,63 @@ with tab3:
         how="left"
     )
 
-    rows = []
+        rows = []
 
-    for _, g in hist.iterrows():
-        away = g["away_team"]
-        home = g["home_team"]
+        for _, g in hist.iterrows():
+            away = g["away_team"]
+            home = g["home_team"]
 
-        mu_home = float(g["model_spread_home"])
-        vegas = float(g["vegas_spread_home"])
-        sigma = max(float(g["sigma"]), MIN_SIGMA)
-        actual_margin = g["actual_margin"]
+            mu_home = float(g["model_spread_home"])
+            spread_home = float(g["vegas_spread_home"])   # home line (DEN -8.5)
+            spread_away = -spread_home                    # away line (TEN +8.5)
+            sigma = max(float(g["sigma"]), MIN_SIGMA)
 
-        if pd.isna(actual_margin) or pd.isna(vegas):
-            continue
+            margin_away = g["actual_margin"]              # away - home (TEN +8.0)
+            if pd.isna(margin_away) or pd.isna(spread_home):
+                continue
+            margin_away = float(margin_away)
+            margin_home = -margin_away                    # home - away
 
-        # --- probability ---
-        skew_adj = 0.15 * np.sign(mu_home)
-        z = (mu_home + vegas + skew_adj) / sigma
-        prob_home = float(student_t_cdf(z / temperature, df=6))
-        prob_away = 1 - prob_home
+            # --- probability of HOME covering its line ---
+            skew_adj = 0.15 * np.sign(mu_home)
+            z_home = (mu_home + spread_home + skew_adj) / sigma
+            prob_home = float(student_t_cdf(z_home / temperature, df=6))
+            prob_away = 1 - prob_home
 
-        home_covers = (actual_margin + vegas) > 0
-        away_covers = not home_covers
+            # --- did each side cover? (handle push) ---
+            home_cover_val = margin_home + spread_home
+            away_cover_val = margin_away + spread_away
 
-        if prob_home >= prob_away:
-            bet_team = home
-            bet_line = vegas              # home spread
-            prob = prob_home
-            covered = home_covers
-        else:
-            bet_team = away
-            bet_line = -vegas             # away spread
-            prob = prob_away
-            covered = away_covers
+            home_covers = home_cover_val > 0
+            away_covers = away_cover_val > 0
+            push = (home_cover_val == 0)  # equivalent to (away_cover_val == 0)
 
-        bet = f"{bet_team} {bet_line:+.1f}"
+            # --- choose side (same rule as tab1: max(prob_home, prob_away)) ---
+            if prob_home >= prob_away:
+                bet_team = home
+                bet_line = spread_home
+                prob = prob_home
+                covered = home_covers
+            else:
+                bet_team = away
+                bet_line = spread_away
+                prob = prob_away
+                covered = away_covers
 
-        ev = ev_from_prob(prob, odds_price)
+            bet = f"{bet_team} {bet_line:+.1f}"
+            ev = ev_from_prob(prob, odds_price)
 
-        rows.append({
-            "matchup": f"{away} @ {home}",
-            "bet": bet,
-            "model_mu": format_matchup_spread(away, home, mu_home),
-            "cover_prob": prob,
-            "bet_ev": ev,
-            "actual_margin": actual_margin,
-            "result": "✅ Win" if covered else "❌ Loss"
-        })
+            if push:
+                result = "➖ Push"
+            else:
+                result = "✅ Win" if covered else "❌ Loss"
 
-    table = (
-        pd.DataFrame(rows)
-        .sort_values("bet_ev", ascending=False)
-    )
-
-    st.dataframe(
-        table.style
-            .format({
-                "cover_prob": "{:.3f}",
-                "bet_ev": "{:.3f}",
-                "actual_margin": "{:+.1f}",
+            rows.append({
+                "matchup": f"{away} @ {home}",
+                "bet": bet,
+                "model_mu": format_matchup_spread(away, home, mu_home),
+                "cover_prob": prob,
+                "bet_ev": ev,
+                "actual_margin": margin_away,  # keep as away margin if you like
+                "result": result
             })
-            .applymap(color_results, subset=["result"]),
-        use_container_width=True
-    )
