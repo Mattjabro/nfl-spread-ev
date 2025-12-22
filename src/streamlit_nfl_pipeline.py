@@ -346,17 +346,23 @@ with tab3:
         home = g["home_team"]
 
         mu_home = float(g["model_spread_home"])
-        spread_home = float(g["vegas_spread_home"])  # trust file as-is
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
-        margin_away = g["actual_margin"]  # away - home
+        # --------------------------------------------------
+        # CRITICAL FIX:
+        # Historical files use + = home favorite
+        # Model uses - = home favorite
+        # --------------------------------------------------
+        spread_home = -float(g["vegas_spread_home"])
+
+        margin_away = g["actual_margin"]   # away - home
         if pd.isna(margin_away):
             continue
 
         margin_away = float(margin_away)
         margin_home = -margin_away
 
-        # ---- probabilities (identical to Tab 1 math) ----
+        # ---- probabilities (IDENTICAL to Tab 1) ----
         skew_adj = 0.15 * np.sign(mu_home)
         z_home = (mu_home + spread_home + skew_adj) / sigma
         prob_home = float(student_t_cdf(z_home / temperature, df=6))
@@ -377,7 +383,7 @@ with tab3:
         bet = f"{bet_team} {bet_line:+.1f}"
         ev = ev_from_prob(prob, odds_price)
 
-        # ---- single grading rule ----
+        # ---- SINGLE grading rule (no branching elsewhere) ----
         cover_val = margin_for_bet + bet_line
 
         if abs(cover_val) < 1e-9:
