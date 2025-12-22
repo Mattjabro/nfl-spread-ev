@@ -105,6 +105,8 @@ def load_historical_week(season: int, week: int):
 
 @st.cache_data(show_spinner=True)
 def load_actual_results(season: int):
+    df = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")
+    st.write(df.columns)
     lines = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")[
         ["season", "week", "home_team", "away_team", "vegas_spread_home"]
     ]
