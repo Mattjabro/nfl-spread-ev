@@ -344,7 +344,7 @@ with tab3:
         mu_home = float(g["model_spread_home"])
 
         # USE HISTORICAL PRED FILE SPREAD (same convention as your model)
-        spread_home = float(g["vegas_spread_home"])     # home line (e.g., NYJ +1.5 if DAL -1.5)
+        spread_home = -float(g["vegas_spread_home"])     # home line (e.g., NYJ +1.5 if DAL -1.5)
         spread_away = -spread_home
 
         sigma = max(float(g["sigma"]), MIN_SIGMA)
