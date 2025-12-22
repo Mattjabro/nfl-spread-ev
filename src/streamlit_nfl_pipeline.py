@@ -377,8 +377,8 @@ with tab3:
 
         # ---- display BOTH margins (no ambiguity) ----
         actual_margin_display = (
-            f"{home} {m_home:+.1f}, "
-            f"{away} {m_away:+.1f}"
+            f"{home} {-m_home:+.1f}, "
+            f"{away} {-m_away:+.1f}"
         )
 
         rows.append({
