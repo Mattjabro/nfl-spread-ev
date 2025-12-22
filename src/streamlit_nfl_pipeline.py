@@ -105,12 +105,14 @@ def load_historical_week(season: int, week: int):
 
 @st.cache_data(show_spinner=True)
 def load_actual_results(season: int):
-    lines = (
-        pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")[
-            ["season", "week", "home_team", "away_team", "closing_spread_home"]
-        ]
-        .rename(columns={"closing_spread_home": "vegas_spread_home"})
-    )
+    lines = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")[
+        ["season", "week", "home_team", "away_team", "closing_spread_home"]
+    ].copy()
+
+    # IMPORTANT: vegas_closing_lines sign is flipped relative to model convention.
+    # We want "home spread" where favorites are negative (BUF -15.5).
+    lines["vegas_spread_home"] = -lines["closing_spread_home"]
+    lines = lines.drop(columns=["closing_spread_home"])
 
     scores = pd.read_csv(RESULTS_DIR / "final_walkforward_predictions.csv")[
         ["season", "week", "home_team", "away_team", "actual_margin"]
