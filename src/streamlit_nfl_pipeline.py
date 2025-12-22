@@ -26,14 +26,17 @@ def sigma_adjusted(base_sigma, spread_home):
     """
     return base_sigma * (1 + 0.08 * abs(spread_home))
 
+
 def norm_cdf(x):
     x = np.asarray(x)
     return 0.5 * (1 + np.vectorize(math.erf)(x / np.sqrt(2)))
+
 
 def student_t_cdf(x, df):
     x = np.asarray(x, dtype=float)
     adj = x * np.sqrt((df - 2) / df)
     return norm_cdf(adj)
+
 
 def ev_from_prob(p, odds=-110):
     if odds < 0:
@@ -44,20 +47,24 @@ def ev_from_prob(p, odds=-110):
         loss = 1.0
     return p * win - (1 - p) * loss
 
+
 def format_matchup_spread(away, home, mu_home):
     sign = "+" if mu_home > 0 else ""
     return f"{away} {sign}{mu_home:.2f} {home}"
+
 
 def american_to_b(odds):
     if odds < 0:
         return 100 / abs(odds)
     return odds / 100
 
+
 def kelly_fraction(p, odds=-110):
     b = american_to_b(odds)
     q = 1 - p
     f = (b * p - q) / b
     return max(f, 0.0)
+
 
 def color_results(val):
     if "Win" in val:
@@ -67,6 +74,7 @@ def color_results(val):
     if "Push" in val:
         return "background-color: #e6e6e6; color: black"
     return ""
+
 
 # ============================================================
 # LOAD MODEL OUTPUTS
@@ -83,7 +91,9 @@ def load_week_data():
 
     return games, qb_map, qb_list, rookie_baseline
 
+
 HIST_DIR = Path("historical/outputs")
+
 
 @st.cache_data(show_spinner=True)
 def load_historical_week(season: int, week: int):
@@ -91,6 +101,7 @@ def load_historical_week(season: int, week: int):
     if not path.exists():
         return None
     return pd.read_csv(path)
+
 
 @st.cache_data(show_spinner=True)
 def load_actual_results(season: int):
@@ -103,6 +114,7 @@ def load_actual_results(season: int):
 
     return scores
 
+
 # ============================================================
 # DEFAULT QB = STARTER LAST WEEK
 # ============================================================
@@ -110,6 +122,7 @@ def load_actual_results(season: int):
 def load_last_week_qbs():
     df = pd.read_csv(RESULTS_DIR / "last_week_starting_qbs.csv")
     return dict(zip(df["team"], df["qb"]))
+
 
 # ============================================================
 # UI
@@ -127,22 +140,12 @@ with st.sidebar:
         "Temperature",
         value=float(TEMPERATURE),
         step=0.05,
-        help=(
-            "Controls how confident the model is in its predictions. "
-            "Higher temperature softens probabilities toward 50%, "
-            "lower temperature makes them more extreme. "
-            "Tuned via historical calibration."
-        )
     )
 
     odds_price = st.number_input(
         "Odds price",
         value=int(ODDS_PRICE),
         step=1,
-        help=(
-            "American odds used to compute EV and Kelly sizing. "
-            "Default -110 assumes standard spread pricing."
-        )
     )
 
     st.divider()
@@ -153,10 +156,6 @@ with st.sidebar:
         min_value=0.0,
         value=100.0,
         step=10.0,
-        help=(
-            "Total bankroll used to size bets. "
-            "Kelly stakes are calculated as a fraction of this value."
-        )
     )
 
     fractional_kelly = st.slider(
@@ -165,12 +164,6 @@ with st.sidebar:
         max_value=1.0,
         value=0.25,
         step=0.05,
-        help=(
-            "Scales down the full Kelly bet size to reduce risk from "
-            "model error. For example, 0.25 means betting 25% of "
-            "the full Kelly recommendation. Professionals typically "
-            "use 0.25–0.5."
-        )
     )
 
     kelly_cap = st.slider(
@@ -179,12 +172,8 @@ with st.sidebar:
         max_value=100.0,
         value=2.0,
         step=0.5,
-        help=(
-            "Hard cap on bet size, regardless of Kelly output. "
-            "Prevents overbetting when the model is very confident. "
-            "Acts as a safety constraint."
-        )
     ) / 100.0
+
 
 tab1, tab2, tab3 = st.tabs(
     ["Week Slate EV", "QB Power Rankings", "Historical Predictions"]
@@ -211,21 +200,21 @@ with tab1:
             f"{away} QB",
             QB_LIST,
             index=QB_LIST.index(default_away_qb) if default_away_qb in QB_LIST else 0,
-            key=f"aqb_{i}"
+            key=f"aqb_{i}",
         )
 
         home_qb = r1c2.selectbox(
             f"{home} QB",
             QB_LIST,
             index=QB_LIST.index(default_home_qb) if default_home_qb in QB_LIST else 0,
-            key=f"hqb_{i}"
+            key=f"hqb_{i}",
         )
 
         spread_away = r1c3.number_input(
             "Market Spread (Away)",
             value=float(-g["vegas_spread_home"]),
             step=0.5,
-            key=f"spread_{i}"
+            key=f"spread_{i}",
         )
 
         spread_home = -spread_away
@@ -238,13 +227,11 @@ with tab1:
         )
 
         mu_home = float(g["model_spread_home"]) + qb_delta
-        sigma = max(float(g["sigma"]), MIN_SIGMA)
 
         base_sigma = max(float(g["sigma"]), MIN_SIGMA)
         sigma = sigma_adjusted(base_sigma, spread_home)
 
         skew_adj = 0.15 * np.sign(mu_home)
-
         z_home = (mu_home + spread_home + skew_adj) / sigma
 
         p_home = float(student_t_cdf(z_home / temperature, df=6))
@@ -282,7 +269,7 @@ with tab1:
             )
         else:
             st.caption("**Kelly stake:** $0.00 (no positive edge)")
-            
+
         rows.append({
             "matchup": f"{away} @ {home}",
             "bet": bet,
@@ -290,7 +277,7 @@ with tab1:
             "cover_prob": prob,
             "bet_ev": ev,
             "kelly_pct": kelly_frac * 100,
-            "stake_$": stake_dollars
+            "stake_$": stake_dollars,
         })
 
     out_df = pd.DataFrame(rows).sort_values("bet_ev", ascending=False)
@@ -301,10 +288,11 @@ with tab1:
             "cover_prob": "{:.3f}",
             "bet_ev": "{:.3f}",
             "kelly_pct": "{:.2f}%",
-            "stake_$": "${:,.2f}"
+            "stake_$": "${:,.2f}",
         }),
-        use_container_width=True
-)
+        use_container_width=True,
+    )
+
 
 # ============================================================
 # TAB 2: QB POWER RANKINGS
@@ -315,7 +303,7 @@ with tab2:
     qb_rankings = (
         pd.DataFrame({
             "QB": list(QB_MAP.keys()),
-            "QB Value (pts)": list(QB_MAP.values())
+            "QB Value (pts)": list(QB_MAP.values()),
         })
         .sort_values("QB Value (pts)", ascending=False)
         .reset_index(drop=True)
@@ -326,13 +314,9 @@ with tab2:
     st.dataframe(
         qb_rankings.style.format({"QB Value (pts)": "{:+.2f}"}),
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
     )
 
-    st.caption(
-        "QB values estimate point impact on the betting spread, inferred from historical closing lines "
-        "and shrunk toward league average to reduce noise."
-    )
 
 # ============================================================
 # TAB 3: HISTORICAL PREDICTIONS
@@ -343,7 +327,7 @@ with tab3:
     week = st.selectbox(
         "Select Week",
         options=list(range(1, 16)),
-        index=0
+        index=0,
     )
 
     hist = load_historical_week(SEASON, week)
@@ -356,66 +340,77 @@ with tab3:
     hist = hist.merge(
         actuals,
         on=["season", "week", "home_team", "away_team"],
-        how="left"
+        how="left",
     )
 
     rows = []
 
     for _, g in hist.iterrows():
-            away = g["away_team"]
-            home = g["home_team"]
+        away = g["away_team"]
+        home = g["home_team"]
 
-            mu_home = float(g["model_spread_home"])
-            spread_home = float(g["vegas_spread_home"])   # home line (DEN -8.5)
-            spread_away = -spread_home                    # away line (TEN +8.5)
-            sigma = max(float(g["sigma"]), MIN_SIGMA)
+        mu_home = float(g["model_spread_home"])
+        spread_home = float(g["vegas_spread_home"])
+        spread_away = -spread_home
+        sigma = max(float(g["sigma"]), MIN_SIGMA)
 
-            margin_away = g["actual_margin"]              # away - home (TEN +8.0)
-            if pd.isna(margin_away) or pd.isna(spread_home):
-                continue
-            margin_away = float(margin_away)
-            margin_home = -margin_away                    # home - away
+        margin_away = g["actual_margin"]
+        if pd.isna(margin_away) or pd.isna(spread_home):
+            continue
 
-            # --- probability of HOME covering its line ---
-            skew_adj = 0.15 * np.sign(mu_home)
-            z_home = (mu_home + spread_home + skew_adj) / sigma
-            prob_home = float(student_t_cdf(z_home / temperature, df=6))
-            prob_away = 1 - prob_home
+        margin_away = float(margin_away)
+        margin_home = -margin_away
 
-            # --- did each side cover? (handle push) ---
-            home_cover_val = margin_home + spread_home
-            away_cover_val = margin_away + spread_away
+        skew_adj = 0.15 * np.sign(mu_home)
+        z_home = (mu_home + spread_home + skew_adj) / sigma
+        prob_home = float(student_t_cdf(z_home / temperature, df=6))
+        prob_away = 1 - prob_home
 
-            home_covers = home_cover_val > 0
-            away_covers = away_cover_val > 0
-            push = (home_cover_val == 0)  # equivalent to (away_cover_val == 0)
+        home_cover_val = margin_home + spread_home
+        away_cover_val = margin_away + spread_away
 
-            # --- choose side (same rule as tab1: max(prob_home, prob_away)) ---
-            if prob_home >= prob_away:
-                bet_team = home
-                bet_line = spread_home
-                prob = prob_home
-                covered = home_covers
-            else:
-                bet_team = away
-                bet_line = spread_away
-                prob = prob_away
-                covered = away_covers
+        home_covers = home_cover_val > 0
+        away_covers = away_cover_val > 0
+        push = home_cover_val == 0
 
-            bet = f"{bet_team} {bet_line:+.1f}"
-            ev = ev_from_prob(prob, odds_price)
+        if prob_home >= prob_away:
+            bet_team = home
+            bet_line = spread_home
+            prob = prob_home
+            covered = home_covers
+        else:
+            bet_team = away
+            bet_line = spread_away
+            prob = prob_away
+            covered = away_covers
 
-            if push:
-                result = "➖ Push"
-            else:
-                result = "✅ Win" if covered else "❌ Loss"
+        bet = f"{bet_team} {bet_line:+.1f}"
+        ev = ev_from_prob(prob, odds_price)
 
-            rows.append({
-                "matchup": f"{away} @ {home}",
-                "bet": bet,
-                "model_mu": format_matchup_spread(away, home, mu_home),
-                "cover_prob": prob,
-                "bet_ev": ev,
-                "actual_margin": margin_away,  # keep as away margin if you like
-                "result": result
-            })
+        if push:
+            result = "➖ Push"
+        else:
+            result = "✅ Win" if covered else "❌ Loss"
+
+        rows.append({
+            "matchup": f"{away} @ {home}",
+            "bet": bet,
+            "model_mu": format_matchup_spread(away, home, mu_home),
+            "cover_prob": prob,
+            "bet_ev": ev,
+            "actual_margin": margin_away,
+            "result": result,
+        })
+
+    table = pd.DataFrame(rows).sort_values("bet_ev", ascending=False)
+
+    st.dataframe(
+        table.style
+        .format({
+            "cover_prob": "{:.3f}",
+            "bet_ev": "{:.3f}",
+            "actual_margin": "{:+.1f}",
+        })
+        .applymap(color_results, subset=["result"]),
+        use_container_width=True,
+    )
