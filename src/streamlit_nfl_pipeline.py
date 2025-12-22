@@ -303,6 +303,15 @@ with tab2:
 with tab3:
     st.subheader("Historical Predictions (Model Bets)")
 
+    # ---- probability filter ----
+    p_thresh = st.slider(
+        "Minimum model probability (p)",
+        min_value=0.50,
+        max_value=0.75,
+        value=0.55,
+        step=0.01,
+    )
+
     week = st.selectbox(
         "Select Week",
         options=list(range(1, 16)),
@@ -393,6 +402,31 @@ with tab3:
 
     table = pd.DataFrame(rows).sort_values("bet_ev", ascending=False)
 
+    # ============================================================
+    # SUMMARY STATS
+    # ============================================================
+    summary = table[
+        (table["cover_prob"] >= p_thresh)
+        & (table["result"] != "➖ Push")
+    ]
+
+    hits = (summary["result"] == "✅ Win").sum()
+    total = len(summary)
+
+    if total > 0:
+        hit_rate = hits / total
+        st.markdown(
+            f"""
+            **Bets with p ≥ {p_thresh:.2f}:**  
+            **{hits} / {total}** hits  
+            **Hit rate:** {hit_rate:.1%}
+            """
+        )
+    else:
+        st.markdown(
+            f"**Bets with p ≥ {p_thresh:.2f}:** No graded bets."
+        )
+        
     st.dataframe(
         table.style
         .format({
