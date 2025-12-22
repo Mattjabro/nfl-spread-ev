@@ -316,7 +316,7 @@ with tab3:
         st.warning("No data found for this week.")
         st.stop()
 
-    # actual_margin in your file is HOME - AWAY
+    # actual_margin in file is HOME - AWAY
     actuals = actuals[actuals["season"] == SEASON]
 
     hist = hist.merge(
@@ -334,17 +334,17 @@ with tab3:
         mu_home = float(g["model_spread_home"])
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
-        # keep this, since you said bet column is correct with it
+        # this keeps bet column consistent with Tab 1
         spread_home = -float(g["vegas_spread_home"])
 
-        # actual_margin is HOME - AWAY
+        # actual_margin = HOME - AWAY
         m_home = g["actual_margin"]
         if pd.isna(m_home):
             continue
         m_home = float(m_home)
         m_away = -m_home
 
-        # ---- probabilities (same math as Tab 1) ----
+        # ---- probabilities (identical to Tab 1) ----
         skew_adj = 0.15 * np.sign(mu_home)
         z_home = (mu_home + spread_home + skew_adj) / sigma
         prob_home = float(student_t_cdf(z_home / temperature, df=6))
@@ -355,17 +355,18 @@ with tab3:
             bet_team = home
             bet_line = spread_home
             prob = prob_home
+            bet_margin = m_home          # home - away
         else:
             bet_team = away
             bet_line = -spread_home
             prob = prob_away
+            bet_margin = m_away          # away - home
 
         bet = f"{bet_team} {bet_line:+.1f}"
         ev = ev_from_prob(prob, odds_price)
 
-        # ---- grade using bet_team/bet_line + HOME-AWAY margin ----
-        margin_for_bet = m_home if bet_team == home else m_away
-        cover_val = margin_for_bet + bet_line
+        # ---- grade bet (single invariant rule) ----
+        cover_val = bet_margin + bet_line
 
         if abs(cover_val) < 1e-9:
             result = "➖ Push"
@@ -374,12 +375,11 @@ with tab3:
         else:
             result = "❌ Loss"
 
-        # ---- display actual margin (AWAY - HOME, to match your expected UI) ----
-        margin_away_minus_home = -m_home
-        if abs(margin_away_minus_home - round(margin_away_minus_home)) < 1e-9:
-            actual_margin_display = f"{away} {int(round(margin_away_minus_home)):+d}"
-        else:
-            actual_margin_display = f"{away} {margin_away_minus_home:+.1f}"
+        # ---- display BOTH margins (no ambiguity) ----
+        actual_margin_display = (
+            f"{home} {m_home:+.1f}, "
+            f"{away} {m_away:+.1f}"
+        )
 
         rows.append({
             "matchup": f"{away} @ {home}",
