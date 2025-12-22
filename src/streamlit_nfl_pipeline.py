@@ -105,14 +105,21 @@ def load_historical_week(season: int, week: int):
 
 @st.cache_data(show_spinner=True)
 def load_actual_results(season: int):
-    sched = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")
+    lines = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")[
+        ["season", "week", "home_team", "away_team", "vegas_spread_home"]
+    ]
 
-    scores = (
-        pd.read_csv(RESULTS_DIR / "final_walkforward_predictions.csv")
-        [["season", "week", "home_team", "away_team", "actual_margin"]]
+    scores = pd.read_csv(RESULTS_DIR / "final_walkforward_predictions.csv")[
+        ["season", "week", "home_team", "away_team", "actual_margin"]
+    ]
+
+    out = lines.merge(
+        scores,
+        on=["season", "week", "home_team", "away_team"],
+        how="left"
     )
 
-    return scores
+    return out
 
 
 # ============================================================
@@ -340,7 +347,7 @@ with tab3:
     hist = hist.merge(
         actuals,
         on=["season", "week", "home_team", "away_team"],
-        how="left",
+        how="left"
     )
 
     rows = []
@@ -350,14 +357,17 @@ with tab3:
         home = g["home_team"]
 
         mu_home = float(g["model_spread_home"])
-        spread_home = -float(g["vegas_spread_home"])
-        spread_away = -spread_home
+
+        # canonical home spread from vegas_closing_lines.csv
+        spread_home = float(g["vegas_spread_home"])      # home line (e.g., DEN -8.5)
+        spread_away = -spread_home                       # away line (e.g., TEN +8.5)
+
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
+        # actual_margin is away - home (your current convention)
         margin_away = g["actual_margin"]
         if pd.isna(margin_away) or pd.isna(spread_home):
             continue
-
         margin_away = float(margin_away)
         margin_home = -margin_away
 
@@ -371,7 +381,7 @@ with tab3:
 
         home_covers = home_cover_val > 0
         away_covers = away_cover_val > 0
-        push = home_cover_val == 0
+        push = abs(home_cover_val) < 1e-9
 
         if prob_home >= prob_away:
             bet_team = home
@@ -392,13 +402,18 @@ with tab3:
         else:
             result = "✅ Win" if covered else "❌ Loss"
 
+        if abs(margin_away - round(margin_away)) < 1e-9:
+            actual_margin_display = f"{away} {int(round(margin_away)):+d}"
+        else:
+            actual_margin_display = f"{away} {margin_away:+.1f}"
+
         rows.append({
             "matchup": f"{away} @ {home}",
             "bet": bet,
             "model_mu": format_matchup_spread(away, home, mu_home),
             "cover_prob": prob,
             "bet_ev": ev,
-            "actual_margin": margin_away,
+            "actual_margin": actual_margin_display,
             "result": result,
         })
 
@@ -409,7 +424,6 @@ with tab3:
         .format({
             "cover_prob": "{:.3f}",
             "bet_ev": "{:.3f}",
-            "actual_margin": "{:+.1f}",
         })
         .applymap(color_results, subset=["result"]),
         use_container_width=True,
