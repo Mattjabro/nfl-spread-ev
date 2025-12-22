@@ -393,7 +393,7 @@ with tab3:
             covered = home_covers
         else:
             bet_team = away
-            bet_line = spread_away
+            bet_line = -spread_home   # <-- mirror Tab 1
             prob = prob_away
             covered = away_covers
 
