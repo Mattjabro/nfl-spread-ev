@@ -378,15 +378,20 @@ with tab3:
         prob_away = 1 - prob_home
 
         home_covers = (actual_margin + vegas) > 0
+        away_covers = not home_covers
 
         if prob_home >= prob_away:
-            bet = f"{home} {vegas:+.1f}"
+            bet_team = home
+            bet_line = vegas              # home spread
             prob = prob_home
             covered = home_covers
         else:
-            bet = f"{away} {-vegas:+.1f}"
+            bet_team = away
+            bet_line = -vegas             # away spread
             prob = prob_away
-            covered = not home_covers
+            covered = away_covers
+
+        bet = f"{bet_team} {bet_line:+.1f}"
 
         ev = ev_from_prob(prob, odds_price)
 
