@@ -443,16 +443,14 @@ with tab3:
         .applymap(color_results, subset=["result"]),
         use_container_width=True,
     )
-    import matplotlib.pyplot as plt
-
+    
     # ============================================================
-    # HIT RATE VS PROBABILITY THRESHOLD
+    # HIT RATE VS PROBABILITY THRESHOLD (Streamlit-native)
     # ============================================================
 
     thresholds = np.arange(0.50, 0.76, 0.02)
 
-    hit_rates = []
-    counts = []
+    rows_plot = []
 
     for p in thresholds:
         subset = table[
@@ -461,26 +459,25 @@ with tab3:
         ]
 
         n = len(subset)
-        counts.append(n)
+        hit_rate = (
+            (subset["result"] == "✅ Win").mean()
+            if n > 0 else np.nan
+        )
 
-        if n > 0:
-            hit_rates.append((subset["result"] == "✅ Win").mean())
-        else:
-            hit_rates.append(np.nan)
+        rows_plot.append({
+            "p_threshold": p,
+            "hit_rate": hit_rate,
+            "n_bets": n,
+        })
 
-    # ---- plot ----
-    fig, ax1 = plt.subplots(figsize=(7, 4))
+    plot_df = pd.DataFrame(rows_plot)
 
-    ax1.plot(thresholds, hit_rates, marker="o")
-    ax1.axhline(0.5, linestyle="--", alpha=0.5)
-    ax1.set_ylim(0.3, 0.8)
-    ax1.set_xlabel("Minimum model probability (p)")
-    ax1.set_ylabel("Hit rate")
-    ax1.set_title("Hit Rate vs Model Confidence")
+    st.subheader("Hit Rate vs Model Confidence")
 
-    # ---- secondary axis: sample size ----
-    ax2 = ax1.twinx()
-    ax2.plot(thresholds, counts, linestyle=":", alpha=0.7)
-    ax2.set_ylabel("Number of bets")
+    st.line_chart(
+        plot_df.set_index("p_threshold")[["hit_rate"]]
+    )
 
-    st.pyplot(fig)
+    st.line_chart(
+        plot_df.set_index("p_threshold")[["n_bets"]]
+    )
