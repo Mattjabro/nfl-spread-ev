@@ -396,7 +396,7 @@ with tab3:
 
         # (optional but helps sanity-check): show margins for both teams
         # If you prefer keeping your old display, swap this back.
-        actual_margin_display = f"{home} {m_home:+.1f} (H-A), {away} {m_away:+.1f}"
+        actual_margin_display = f"{home} {m_home:+.1f}, {away} {m_away:+.1f}"
 
         rows.append({
             "matchup": f"{away} @ {home}",
