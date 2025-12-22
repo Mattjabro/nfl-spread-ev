@@ -333,6 +333,9 @@ with tab3:
         st.warning("No data found for this week.")
         st.stop()
 
+    # ---- CRITICAL: filter actuals to the same season ----
+    actuals = actuals[actuals["season"] == SEASON]
+
     hist = hist.merge(
         actuals,
         on=["season", "week", "home_team", "away_team"],
@@ -349,13 +352,14 @@ with tab3:
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
         # --------------------------------------------------
-        # CRITICAL FIX:
-        # Historical files use + = home favorite
-        # Model uses - = home favorite
+        # HIST FILE CONVENTION:
+        # + = home favorite
+        # MODEL CONVENTION:
+        # - = home favorite
         # --------------------------------------------------
         spread_home = -float(g["vegas_spread_home"])
 
-        margin_away = g["actual_margin"]   # away - home
+        margin_away = g["actual_margin"]  # away - home
         if pd.isna(margin_away):
             continue
 
@@ -383,7 +387,7 @@ with tab3:
         bet = f"{bet_team} {bet_line:+.1f}"
         ev = ev_from_prob(prob, odds_price)
 
-        # ---- SINGLE grading rule (no branching elsewhere) ----
+        # ---- SINGLE SOURCE OF TRUTH FOR GRADING ----
         cover_val = margin_for_bet + bet_line
 
         if abs(cover_val) < 1e-9:
