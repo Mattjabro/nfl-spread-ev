@@ -350,7 +350,7 @@ with tab3:
         home = g["home_team"]
 
         mu_home = float(g["model_spread_home"])
-        spread_home = float(g["vegas_spread_home"])
+        spread_home = -float(g["vegas_spread_home"])
         spread_away = -spread_home
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
