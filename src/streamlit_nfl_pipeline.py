@@ -317,6 +317,9 @@ with tab2:
 # ============================================================
 # TAB 3: HISTORICAL PREDICTIONS
 # ============================================================
+# ============================================================
+# TAB 3: HISTORICAL PREDICTIONS
+# ============================================================
 with tab3:
     st.subheader("Historical Predictions (Model Bets)")
 
@@ -333,7 +336,7 @@ with tab3:
         st.warning("No data found for this week.")
         st.stop()
 
-    # ---- CRITICAL: filter actuals to the same season ----
+    # IMPORTANT: actual_margin in your file is HOME - AWAY
     actuals = actuals[actuals["season"] == SEASON]
 
     hist = hist.merge(
@@ -351,22 +354,17 @@ with tab3:
         mu_home = float(g["model_spread_home"])
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
-        # --------------------------------------------------
-        # HIST FILE CONVENTION:
-        # + = home favorite
-        # MODEL CONVENTION:
-        # - = home favorite
-        # --------------------------------------------------
+        # Keep your current spread conversion (since you said bet column is now correct)
         spread_home = -float(g["vegas_spread_home"])
 
-        margin_away = g["actual_margin"]  # away - home
-        if pd.isna(margin_away):
+        # actual_margin is HOME - AWAY
+        m_home = g["actual_margin"]
+        if pd.isna(m_home):
             continue
+        m_home = float(m_home)
+        m_away = -m_home
 
-        margin_away = float(margin_away)
-        margin_home = -margin_away
-
-        # ---- probabilities (IDENTICAL to Tab 1) ----
+        # ---- probabilities (same math as Tab 1) ----
         skew_adj = 0.15 * np.sign(mu_home)
         z_home = (mu_home + spread_home + skew_adj) / sigma
         prob_home = float(student_t_cdf(z_home / temperature, df=6))
@@ -377,17 +375,16 @@ with tab3:
             bet_team = home
             bet_line = spread_home
             prob = prob_home
-            margin_for_bet = margin_home
         else:
             bet_team = away
             bet_line = -spread_home
             prob = prob_away
-            margin_for_bet = margin_away
 
         bet = f"{bet_team} {bet_line:+.1f}"
         ev = ev_from_prob(prob, odds_price)
 
-        # ---- SINGLE SOURCE OF TRUTH FOR GRADING ----
+        # ---- grade using bet_team/bet_line + HOME-AWAY margin ----
+        margin_for_bet = m_home if bet_team == home else m_away
         cover_val = margin_for_bet + bet_line
 
         if abs(cover_val) < 1e-9:
@@ -397,11 +394,9 @@ with tab3:
         else:
             result = "❌ Loss"
 
-        # ---- display actual margin ----
-        if abs(margin_away - round(margin_away)) < 1e-9:
-            actual_margin_display = f"{away} {int(round(margin_away)):+d}"
-        else:
-            actual_margin_display = f"{away} {margin_away:+.1f}"
+        # (optional but helps sanity-check): show margins for both teams
+        # If you prefer keeping your old display, swap this back.
+        actual_margin_display = f"{home} {m_home:+.1f} (H-A), {away} {m_away:+.1f}"
 
         rows.append({
             "matchup": f"{away} @ {home}",
