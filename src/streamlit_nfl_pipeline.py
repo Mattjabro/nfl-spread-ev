@@ -359,9 +359,9 @@ with tab3:
         how="left"
     )
 
-        rows = []
+    rows = []
 
-        for _, g in hist.iterrows():
+    for _, g in hist.iterrows():
             away = g["away_team"]
             home = g["home_team"]
 
