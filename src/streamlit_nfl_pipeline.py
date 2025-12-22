@@ -105,26 +105,10 @@ def load_historical_week(season: int, week: int):
 
 @st.cache_data(show_spinner=True)
 def load_actual_results(season: int):
-    lines = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")[
-        ["season", "week", "home_team", "away_team", "closing_spread_home"]
-    ].copy()
-
-    # IMPORTANT: vegas_closing_lines sign is flipped relative to model convention.
-    # We want "home spread" where favorites are negative (BUF -15.5).
-    lines["vegas_spread_home"] = -lines["closing_spread_home"]
-    lines = lines.drop(columns=["closing_spread_home"])
-
     scores = pd.read_csv(RESULTS_DIR / "final_walkforward_predictions.csv")[
         ["season", "week", "home_team", "away_team", "actual_margin"]
     ]
-
-    out = lines.merge(
-        scores,
-        on=["season", "week", "home_team", "away_team"],
-        how="left",
-    )
-
-    return out
+    return scores
 
 
 # ============================================================
@@ -345,10 +329,6 @@ with tab3:
     hist = load_historical_week(SEASON, week)
     actuals = load_actual_results(SEASON)
 
-    if hist is None:
-        st.warning("No data found for this week.")
-        st.stop()
-
     hist = hist.merge(
         actuals,
         on=["season", "week", "home_team", "away_team"],
@@ -363,14 +343,13 @@ with tab3:
 
         mu_home = float(g["model_spread_home"])
 
-        # canonical home spread from vegas_closing_lines.csv
-        spread_home = float(g["vegas_spread_home_y"])      # home line (e.g., DEN -8.5)
-        spread_away = -spread_home                       # away line (e.g., TEN +8.5)
+        # USE HISTORICAL PRED FILE SPREAD (same convention as your model)
+        spread_home = float(g["vegas_spread_home"])     # home line (e.g., NYJ +1.5 if DAL -1.5)
+        spread_away = -spread_home
 
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
-        # actual_margin is away - home (your current convention)
-        margin_away = g["actual_margin"]
+        margin_away = g["actual_margin"]  # away - home
         if pd.isna(margin_away) or pd.isna(spread_home):
             continue
         margin_away = float(margin_away)
@@ -388,6 +367,7 @@ with tab3:
         away_covers = away_cover_val > 0
         push = abs(home_cover_val) < 1e-9
 
+        # EXACT SAME BET CONSTRUCTION AS TAB 1
         if prob_home >= prob_away:
             bet_team = home
             bet_line = spread_home
@@ -395,7 +375,7 @@ with tab3:
             covered = home_covers
         else:
             bet_team = away
-            bet_line = -spread_home   # <-- mirror Tab 1
+            bet_line = -spread_home   # same as Tab 1
             prob = prob_away
             covered = away_covers
 
