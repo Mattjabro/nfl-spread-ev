@@ -362,7 +362,7 @@ with tab3:
         mu_home = float(g["model_spread_home"])
 
         # canonical home spread from vegas_closing_lines.csv
-        spread_home = float(g["vegas_spread_home"])      # home line (e.g., DEN -8.5)
+        spread_home = float(g["vegas_spread_home_y"])      # home line (e.g., DEN -8.5)
         spread_away = -spread_home                       # away line (e.g., TEN +8.5)
 
         sigma = max(float(g["sigma"]), MIN_SIGMA)
