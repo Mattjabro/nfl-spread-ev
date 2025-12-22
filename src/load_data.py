@@ -1,7 +1,7 @@
 import nfl_data_py as nfl
 import pandas as pd
 
-def load_games(start_season=2015, end_season=2025):
+def load_games(start_season=2020, end_season=2025):
     games = nfl.import_schedules(range(start_season, end_season + 1))
 
     games = games[
@@ -30,8 +30,16 @@ def load_games(start_season=2015, end_season=2025):
     return df.sort_values("global_week").reset_index(drop=True), team_to_idx
 
 
-def attach_qbs(df, start_season=2015, end_season=2025):
-    qb_adj = pd.read_csv("../results/qb_adjustments.csv")
+def attach_qbs(df, qb_file=None, start_season=2020, end_season=2025):
+    from pathlib import Path
+
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+    RESULTS_DIR = REPO_ROOT / "results"
+
+    if qb_file is None:
+        qb_adj = pd.read_csv(RESULTS_DIR / "qb_adjustments.csv")
+    else:
+        qb_adj = pd.read_csv(qb_file)
 
     pbp = nfl.import_pbp_data(
         years=list(range(start_season, end_season + 1)),

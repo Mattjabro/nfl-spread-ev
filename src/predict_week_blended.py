@@ -1,9 +1,16 @@
 import numpy as np
 import pandas as pd
 import nfl_data_py as nfl
+from pathlib import Path
 
 from load_data import load_games, attach_qbs
 from model_margin_decay_season_boost import fit_margin_decay_model
+
+# --------------------------------------------------
+# PATH SETUP (ONLY NECESSARY CHANGE)
+# --------------------------------------------------
+REPO_ROOT = Path(__file__).resolve().parents[1]
+RESULTS_DIR = REPO_ROOT / "results"
 
 # --------------------------------------------------
 # TUNED MODEL HYPERPARAMETERS
@@ -11,11 +18,10 @@ from model_margin_decay_season_boost import fit_margin_decay_model
 DECAY_RATE = 0.015
 SEASON_BOOST = 2.5
 
-
 # --------------------------------------------------
 # LOAD BLEND WEIGHTS
 # --------------------------------------------------
-blend = pd.read_csv("../results/blend_weights_by_edge.csv")
+blend = pd.read_csv(RESULTS_DIR / "blend_weights_by_edge.csv")
 alpha_map = dict(zip(blend["edge_bin"], blend["best_alpha"]))
 
 def get_edge_bin(abs_edge):
@@ -28,12 +34,12 @@ def get_edge_bin(abs_edge):
     else:
         return "huge"
 
-def predict_week(season, week):
+def predict_week(season, week, qb_file=None):
     # --------------------------------------------------
     # LOAD HISTORICAL DATA (FOR TRAINING)
     # --------------------------------------------------
     hist_df, team_to_idx = load_games()
-    hist_df = attach_qbs(hist_df)
+    hist_df = attach_qbs(hist_df, qb_file=qb_file)
 
     # --------------------------------------------------
     # TRAIN ON PAST GAMES ONLY
@@ -77,12 +83,12 @@ def predict_week(season, week):
     # --------------------------------------------------
     # ATTACH QB VALUES
     # --------------------------------------------------
-    games = attach_qbs(games)
+    games = attach_qbs(games, qb_file=qb_file)
 
     # --------------------------------------------------
-    # LOAD CURRENT VEGAS LINES (ODDS API OUTPUT)
+    # LOAD VEGAS LINES
     # --------------------------------------------------
-    vegas = pd.read_csv("../results/vegas_lines_2025.csv")
+    vegas = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")
 
     games = games.merge(
         vegas,
@@ -134,9 +140,17 @@ def predict_week(season, week):
 
     return pd.DataFrame(rows)
 
+# --------------------------------------------------
+# CLI ENTRY POINT
+# --------------------------------------------------
 if __name__ == "__main__":
-    preds = predict_week(2025, 16)
-    out = "../results/week16_blended_lines.csv"
+    SEASON = 2025
+    WEEK = 16  # change this for current week
+
+    preds = predict_week(SEASON, WEEK)
+
+    out = RESULTS_DIR / f"week{WEEK}_blended_lines.csv"
     preds.to_csv(out, index=False)
+
     print(preds)
     print(f"\nSaved blended predictions to {out}")

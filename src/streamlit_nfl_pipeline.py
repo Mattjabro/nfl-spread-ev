@@ -59,6 +59,13 @@ def kelly_fraction(p, odds=-110):
     f = (b * p - q) / b
     return max(f, 0.0)
 
+def color_results(val):
+    if "Win" in val:
+        return "background-color: #d4f8d4; color: black"  # light green
+    elif "Loss" in val:
+        return "background-color: #f8d4d4; color: black"  # light red
+    return ""
+
 # ============================================================
 # LOAD MODEL OUTPUTS
 # ============================================================
@@ -73,6 +80,26 @@ def load_week_data():
     rookie_baseline = qb_adj["qb_value_shrunk"].quantile(0.35)
 
     return games, qb_map, qb_list, rookie_baseline
+
+HIST_DIR = Path("historical/outputs")
+
+@st.cache_data(show_spinner=True)
+def load_historical_week(season: int, week: int):
+    path = HIST_DIR / f"season_{season}_week_{week}_predictions.csv"
+    if not path.exists():
+        return None
+    return pd.read_csv(path)
+
+@st.cache_data(show_spinner=True)
+def load_actual_results(season: int):
+    sched = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")
+
+    scores = (
+        pd.read_csv(RESULTS_DIR / "final_walkforward_predictions.csv")
+        [["season", "week", "home_team", "away_team", "actual_margin"]]
+    )
+
+    return scores
 
 # ============================================================
 # DEFAULT QB = STARTER LAST WEEK
@@ -157,8 +184,8 @@ with st.sidebar:
         )
     ) / 100.0
 
-tab1, tab2 = st.tabs(
-    ["Week Slate EV", "QB Power Rankings"]
+tab1, tab2, tab3 = st.tabs(
+    ["Week Slate EV", "QB Power Rankings", "Historical Predictions"]
 )
 
 # ============================================================
@@ -303,4 +330,88 @@ with tab2:
     st.caption(
         "QB values estimate point impact on the betting spread, inferred from historical closing lines "
         "and shrunk toward league average to reduce noise."
+    )
+
+# ============================================================
+# TAB 3: HISTORICAL PREDICTIONS
+# ============================================================
+with tab3:
+    st.subheader("Historical Predictions (Model Bets)")
+
+    week = st.selectbox(
+        "Select Week",
+        options=list(range(1, 16)),
+        index=0
+    )
+
+    hist = load_historical_week(SEASON, week)
+    actuals = load_actual_results(SEASON)
+
+    if hist is None:
+        st.warning("No data found for this week.")
+        st.stop()
+
+    hist = hist.merge(
+        actuals,
+        on=["season", "week", "home_team", "away_team"],
+        how="left"
+    )
+
+    rows = []
+
+    for _, g in hist.iterrows():
+        away = g["away_team"]
+        home = g["home_team"]
+
+        mu_home = float(g["model_spread_home"])
+        vegas = float(g["vegas_spread_home"])
+        sigma = max(float(g["sigma"]), MIN_SIGMA)
+        actual_margin = g["actual_margin"]
+
+        if pd.isna(actual_margin) or pd.isna(vegas):
+            continue
+
+        # --- probability ---
+        skew_adj = 0.15 * np.sign(mu_home)
+        z = (mu_home + vegas + skew_adj) / sigma
+        prob_home = float(student_t_cdf(z / temperature, df=6))
+        prob_away = 1 - prob_home
+
+        home_covers = (actual_margin + vegas) > 0
+
+        if prob_home >= prob_away:
+            bet = f"{home} {vegas:+.1f}"
+            prob = prob_home
+            covered = home_covers
+        else:
+            bet = f"{away} {-vegas:+.1f}"
+            prob = prob_away
+            covered = not home_covers
+
+        ev = ev_from_prob(prob, odds_price)
+
+        rows.append({
+            "matchup": f"{away} @ {home}",
+            "bet": bet,
+            "model_mu": format_matchup_spread(away, home, mu_home),
+            "cover_prob": prob,
+            "bet_ev": ev,
+            "actual_margin": actual_margin,
+            "result": "✅ Win" if covered else "❌ Loss"
+        })
+
+    table = (
+        pd.DataFrame(rows)
+        .sort_values("bet_ev", ascending=False)
+    )
+
+    st.dataframe(
+        table.style
+            .format({
+                "cover_prob": "{:.3f}",
+                "bet_ev": "{:.3f}",
+                "actual_margin": "{:+.1f}",
+            })
+            .applymap(color_results, subset=["result"]),
+        use_container_width=True
     )

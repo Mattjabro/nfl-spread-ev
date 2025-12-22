@@ -1,0 +1,16 @@
+season,week,away_team,home_team,model_spread_home,sigma,vegas_spread_home,blended_spread_home,edge_bin,alpha
+2025,11,NYJ,NE,7.73,10.46,12.5,10.59,large,0.6000000000000001
+2025,11,WAS,MIA,5.03,10.46,2.5,4.78,medium,0.1
+2025,11,CAR,ATL,6.1,10.46,4.5,5.94,medium,0.1
+2025,11,TB,BUF,8.01,10.46,6.0,7.81,medium,0.1
+2025,11,LAC,JAX,-2.77,10.46,-3.0,-2.77,small,0.0
+2025,11,CHI,MIN,4.45,10.46,3.0,4.3,medium,0.1
+2025,11,GB,NYG,-4.83,10.46,-7.5,-5.1,medium,0.1
+2025,11,CIN,PIT,7.69,10.46,5.5,7.48,medium,0.1
+2025,11,HOU,TEN,0.44,10.46,-5.5,-3.42,huge,0.65
+2025,11,SF,ARI,-4.69,10.46,-3.5,-4.57,medium,0.1
+2025,11,SEA,LA,3.51,10.46,3.0,3.51,small,0.0
+2025,11,BAL,CLE,-6.19,10.46,-7.5,-6.32,medium,0.1
+2025,11,KC,DEN,-2.61,10.46,-3.5,-2.61,small,0.0
+2025,11,DET,PHI,0.93,10.46,2.5,1.09,medium,0.1
+2025,11,DAL,LV,-3.93,10.46,-3.5,-3.93,small,0.0
