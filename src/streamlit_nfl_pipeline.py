@@ -329,6 +329,10 @@ with tab3:
     hist = load_historical_week(SEASON, week)
     actuals = load_actual_results(SEASON)
 
+    if hist is None:
+        st.warning("No data found for this week.")
+        st.stop()
+
     hist = hist.merge(
         actuals,
         on=["season", "week", "home_team", "away_team"],
@@ -343,50 +347,49 @@ with tab3:
 
         mu_home = float(g["model_spread_home"])
 
-        # USE HISTORICAL PRED FILE SPREAD (same convention as your model)
-        spread_home = -float(g["vegas_spread_home"])     # home line (e.g., NYJ +1.5 if DAL -1.5)
-        spread_away = -spread_home
-
+        # IMPORTANT: use spread exactly as stored in historical file
+        spread_home = float(g["vegas_spread_home"])
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
         margin_away = g["actual_margin"]  # away - home
-        if pd.isna(margin_away) or pd.isna(spread_home):
+        if pd.isna(margin_away):
             continue
+
         margin_away = float(margin_away)
         margin_home = -margin_away
 
+        # ---- probabilities (same math as Tab 1) ----
         skew_adj = 0.15 * np.sign(mu_home)
         z_home = (mu_home + spread_home + skew_adj) / sigma
         prob_home = float(student_t_cdf(z_home / temperature, df=6))
         prob_away = 1 - prob_home
 
-        home_cover_val = margin_home + spread_home
-        away_cover_val = margin_away + spread_away
-
-        home_covers = home_cover_val > 0
-        away_covers = away_cover_val > 0
-        push = abs(home_cover_val) < 1e-9
-
-        # EXACT SAME BET CONSTRUCTION AS TAB 1
+        # ---- EXACT SAME BET CONSTRUCTION AS TAB 1 ----
         if prob_home >= prob_away:
             bet_team = home
             bet_line = spread_home
             prob = prob_home
-            covered = home_covers
+            margin_bet = margin_home
         else:
             bet_team = away
-            bet_line = -spread_home   # same as Tab 1
+            bet_line = -spread_home
             prob = prob_away
-            covered = away_covers
+            margin_bet = margin_away
 
         bet = f"{bet_team} {bet_line:+.1f}"
         ev = ev_from_prob(prob, odds_price)
 
-        if push:
-            result = "➖ Push"
-        else:
-            result = "✅ Win" if covered else "❌ Loss"
+        # ---- grade the bet (single source of truth) ----
+        cover_val = margin_bet + bet_line
 
+        if abs(cover_val) < 1e-9:
+            result = "➖ Push"
+        elif cover_val > 0:
+            result = "✅ Win"
+        else:
+            result = "❌ Loss"
+
+        # ---- display actual margin ----
         if abs(margin_away - round(margin_away)) < 1e-9:
             actual_margin_display = f"{away} {int(round(margin_away)):+d}"
         else:
