@@ -443,3 +443,44 @@ with tab3:
         .applymap(color_results, subset=["result"]),
         use_container_width=True,
     )
+    import matplotlib.pyplot as plt
+
+    # ============================================================
+    # HIT RATE VS PROBABILITY THRESHOLD
+    # ============================================================
+
+    thresholds = np.arange(0.50, 0.76, 0.02)
+
+    hit_rates = []
+    counts = []
+
+    for p in thresholds:
+        subset = table[
+            (table["cover_prob"] >= p)
+            & (table["result"] != "➖ Push")
+        ]
+
+        n = len(subset)
+        counts.append(n)
+
+        if n > 0:
+            hit_rates.append((subset["result"] == "✅ Win").mean())
+        else:
+            hit_rates.append(np.nan)
+
+    # ---- plot ----
+    fig, ax1 = plt.subplots(figsize=(7, 4))
+
+    ax1.plot(thresholds, hit_rates, marker="o")
+    ax1.axhline(0.5, linestyle="--", alpha=0.5)
+    ax1.set_ylim(0.3, 0.8)
+    ax1.set_xlabel("Minimum model probability (p)")
+    ax1.set_ylabel("Hit rate")
+    ax1.set_title("Hit Rate vs Model Confidence")
+
+    # ---- secondary axis: sample size ----
+    ax2 = ax1.twinx()
+    ax2.plot(thresholds, counts, linestyle=":", alpha=0.7)
+    ax2.set_ylabel("Number of bets")
+
+    st.pyplot(fig)
