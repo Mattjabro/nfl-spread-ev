@@ -347,8 +347,12 @@ with tab3:
 
         mu_home = float(g["model_spread_home"])
 
-        # IMPORTANT: use spread exactly as stored in historical file
-        spread_home = float(g["vegas_spread_home"])
+        # --------------------------------------------------
+        # CRITICAL FIX:
+        # Historical file has OPPOSITE sign convention.
+        # Normalize to match Tab 1 (favorites negative).
+        # --------------------------------------------------
+        spread_home = -float(g["vegas_spread_home"])
         sigma = max(float(g["sigma"]), MIN_SIGMA)
 
         margin_away = g["actual_margin"]  # away - home
@@ -358,13 +362,13 @@ with tab3:
         margin_away = float(margin_away)
         margin_home = -margin_away
 
-        # ---- probabilities (same math as Tab 1) ----
+        # ---- probabilities (same as Tab 1) ----
         skew_adj = 0.15 * np.sign(mu_home)
         z_home = (mu_home + spread_home + skew_adj) / sigma
         prob_home = float(student_t_cdf(z_home / temperature, df=6))
         prob_away = 1 - prob_home
 
-        # ---- EXACT SAME BET CONSTRUCTION AS TAB 1 ----
+        # ---- EXACT SAME BET LOGIC AS TAB 1 ----
         if prob_home >= prob_away:
             bet_team = home
             bet_line = spread_home
@@ -379,7 +383,7 @@ with tab3:
         bet = f"{bet_team} {bet_line:+.1f}"
         ev = ev_from_prob(prob, odds_price)
 
-        # ---- grade the bet (single source of truth) ----
+        # ---- grade result ----
         cover_val = margin_bet + bet_line
 
         if abs(cover_val) < 1e-9:
@@ -389,7 +393,7 @@ with tab3:
         else:
             result = "❌ Loss"
 
-        # ---- display actual margin ----
+        # ---- display margin ----
         if abs(margin_away - round(margin_away)) < 1e-9:
             actual_margin_display = f"{away} {int(round(margin_away)):+d}"
         else:
