@@ -327,48 +327,51 @@ with tab3:
     )
 
     hist = load_historical_week(SEASON, week)
-    actuals = load_actual_results(SEASON)
-
     if hist is None:
         st.warning("No data found for this week.")
         st.stop()
 
-    hist = hist.merge(
-        actuals,
-        on=["season", "week", "home_team", "away_team"],
-        how="left"
+    actuals = load_actual_results(SEASON)  # season/week/home/away/actual_margin
+
+    # ---- CANONICAL MARKET SPREAD (single source of truth) ----
+    vegas = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")[
+        ["season", "week", "home_team", "away_team", "closing_spread_home"]
+    ].copy()
+
+    # Normalize to YOUR convention: favorites negative (BUF -15.5)
+    vegas["spread_home"] = -vegas["closing_spread_home"]
+    vegas = vegas.drop(columns=["closing_spread_home"])
+
+    # Merge everything
+    df = (
+        hist.merge(actuals, on=["season", "week", "home_team", "away_team"], how="left")
+            .merge(vegas,   on=["season", "week", "home_team", "away_team"], how="left")
     )
 
     rows = []
 
-    for _, g in hist.iterrows():
+    for _, g in df.iterrows():
         away = g["away_team"]
         home = g["home_team"]
 
-        mu_home = float(g["model_spread_home"])
-
-        # --------------------------------------------------
-        # CRITICAL FIX:
-        # Historical file has OPPOSITE sign convention.
-        # Normalize to match Tab 1 (favorites negative).
-        # --------------------------------------------------
-        spread_home = -float(g["vegas_spread_home"])
-        sigma = max(float(g["sigma"]), MIN_SIGMA)
-
-        margin_away = g["actual_margin"]  # away - home
-        if pd.isna(margin_away):
+        # If either is missing, skip
+        if pd.isna(g.get("spread_home")) or pd.isna(g.get("actual_margin")):
             continue
 
-        margin_away = float(margin_away)
+        mu_home = float(g["model_spread_home"])
+        sigma = max(float(g["sigma"]), MIN_SIGMA)
+
+        spread_home = float(g["spread_home"])     # canonical home line
+        margin_away = float(g["actual_margin"])   # away - home
         margin_home = -margin_away
 
-        # ---- probabilities (same as Tab 1) ----
+        # ---- probabilities (same math as Tab 1) ----
         skew_adj = 0.15 * np.sign(mu_home)
         z_home = (mu_home + spread_home + skew_adj) / sigma
         prob_home = float(student_t_cdf(z_home / temperature, df=6))
         prob_away = 1 - prob_home
 
-        # ---- EXACT SAME BET LOGIC AS TAB 1 ----
+        # ---- EXACT SAME BET CONSTRUCTION AS TAB 1 ----
         if prob_home >= prob_away:
             bet_team = home
             bet_line = spread_home
@@ -383,9 +386,8 @@ with tab3:
         bet = f"{bet_team} {bet_line:+.1f}"
         ev = ev_from_prob(prob, odds_price)
 
-        # ---- grade result ----
+        # ---- grade result (single source of truth) ----
         cover_val = margin_bet + bet_line
-
         if abs(cover_val) < 1e-9:
             result = "➖ Push"
         elif cover_val > 0:
@@ -413,10 +415,7 @@ with tab3:
 
     st.dataframe(
         table.style
-        .format({
-            "cover_prob": "{:.3f}",
-            "bet_ev": "{:.3f}",
-        })
-        .applymap(color_results, subset=["result"]),
+            .format({"cover_prob": "{:.3f}", "bet_ev": "{:.3f}"})
+            .applymap(color_results, subset=["result"]),
         use_container_width=True,
     )
