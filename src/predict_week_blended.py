@@ -33,6 +33,14 @@ def get_edge_bin(abs_edge):
         return "large"
     else:
         return "huge"
+    
+
+def get_last_regular_season_week(season):
+    sched = nfl.import_schedules([season])
+    return (
+        sched[sched["game_type"] == "REG"]["week"]
+        .max()
+    )
 
 def predict_week(season, week, qb_file=None):
     # --------------------------------------------------
@@ -88,7 +96,7 @@ def predict_week(season, week, qb_file=None):
     # --------------------------------------------------
     # LOAD VEGAS LINES
     # --------------------------------------------------
-    vegas = pd.read_csv(RESULTS_DIR / "vegas_closing_lines.csv")
+    vegas = pd.read_csv(RESULTS_DIR / "vegas_lines_2025.csv")
 
     games = games.merge(
         vegas,
@@ -145,7 +153,7 @@ def predict_week(season, week, qb_file=None):
 # --------------------------------------------------
 if __name__ == "__main__":
     SEASON = 2025
-    WEEK = 16  # change this for current week
+    WEEK = 17
 
     preds = predict_week(SEASON, WEEK)
 

@@ -8,7 +8,7 @@ from pathlib import Path
 # CONFIG
 # ============================================================
 SEASON = 2025
-WEEK = 16
+WEEK = 17
 TEMPERATURE = 1.7
 ODDS_PRICE = -110
 MIN_SIGMA = 1e-6
@@ -71,8 +71,10 @@ def color_results(val):
 # LOAD MODEL OUTPUTS
 # ============================================================
 @st.cache_data(show_spinner=True)
-def load_week_data():
-    games = pd.read_csv(RESULTS_DIR / "week16_blended_lines.csv")
+def load_week_data(season: int, week: int):
+    games = pd.read_csv(
+        RESULTS_DIR / f"week{week}_blended_lines.csv"
+    )
     qb_adj = pd.read_csv(RESULTS_DIR / "qb_adjustments.csv")
 
     qb_map = dict(zip(qb_adj["qb_name"], qb_adj["qb_value_shrunk"]))
@@ -110,9 +112,9 @@ def load_last_week_qbs():
 # UI
 # ============================================================
 st.set_page_config(page_title="NFL Spread EV Tool", layout="wide")
-st.title("NFL Spread EV Tool — Week 16")
+st.title(f"NFL Spread EV Tool — Week {WEEK}")
 
-games, QB_MAP, QB_LIST, ROOKIE_BASELINE = load_week_data()
+games, QB_MAP, QB_LIST, ROOKIE_BASELINE = load_week_data(SEASON, WEEK)
 last_qb = load_last_week_qbs()
 
 with st.sidebar:
@@ -317,12 +319,12 @@ with tab3:
     if not all_weeks:
         week = st.selectbox(
             "Select Week",
-            options=list(range(1, 16)),
+            options=list(range(1, WEEK)),
             index=0,
         )
         weeks = [week]
     else:
-        weeks = list(range(1, 16))
+        weeks = list(range(1, WEEK))
 
     actuals = load_actual_results(SEASON)
     actuals = actuals[actuals["season"] == SEASON]
