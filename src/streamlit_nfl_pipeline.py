@@ -88,9 +88,13 @@ def load_week_data(season: int, week: int):
 # DEFAULT QB = STARTER LAST WEEK
 # ============================================================
 @st.cache_data(show_spinner=True)
-def load_last_week_qbs():
+def load_last_week_qbs(mtime):
     df = pd.read_csv(RESULTS_DIR / "last_week_starting_qbs.csv")
     return dict(zip(df["team"], df["qb"]))
+
+last_qb = load_last_week_qbs(
+    (RESULTS_DIR / "last_week_starting_qbs.csv").stat().st_mtime
+)
 
 # ============================================================
 # UI
@@ -99,7 +103,6 @@ st.set_page_config(page_title="NFL Spread EV Tool", layout="wide")
 st.title(f"NFL Spread EV Tool — Week {WEEK}")
 
 games, QB_MAP, QB_LIST, ROOKIE_BASELINE = load_week_data(SEASON, WEEK)
-last_qb = load_last_week_qbs()
 
 with st.sidebar:
     st.header("Model Settings")
