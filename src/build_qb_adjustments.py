@@ -45,6 +45,16 @@ qb["qb_value_shrunk"] = (
 
 qb_adj = qb[["qb_name", "qb_value_shrunk"]]
 
+# ================================
+# TEST 4: QB ADJUSTMENT PRESENCE
+# ================================
+def assert_qb_present(qb_name):
+    matches = qb[qb["qb_name"].str.contains(qb_name, case=False, na=False)]
+    print(f"\n[QB VALUE CHECK: {qb_name}]")
+    print(matches if len(matches) else "❌ QB NOT PRESENT")
+
+assert_qb_present("Ewers")
+
 qb_adj.to_csv(OUT_PATH, index=False)
 
 print(f"\nSaved QB adjustments → {OUT_PATH}")
